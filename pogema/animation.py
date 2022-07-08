@@ -182,7 +182,7 @@ class AnimationMonitor(gym.Wrapper):
         agents_colors = {index: next(colors) for index in range(self.grid_cfg.num_agents)}
 
         episode_length = len(self.dones_history)
-        if egocentric_idx is not None:
+        if egocentric_idx is not None and self.grid_cfg.disappear_on_goal:
             for step_idx, dones in enumerate(self.dones_history):
                 if dones[egocentric_idx]:
                     episode_length = min(len(self.dones_history), step_idx + 1)
