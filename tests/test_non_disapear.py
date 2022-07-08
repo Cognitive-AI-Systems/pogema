@@ -1,0 +1,87 @@
+import gym 
+import pogema
+from pogema.wrappers.multi_time_limit import MultiTimeLimit
+from pogema.animation import AnimationMonitor
+from IPython.display import SVG, display
+from pogema import GridConfig
+import numpy as np
+from pogema.grid import GridConfig
+from pogema.integrations.make_pogema import make_pogema
+
+class ActionMapping:
+    noop: int = 0
+    up: int = 1
+    down: int = 2
+    left: int = 3
+    right: int = 4
+
+def test_non_dis():
+    grid = """
+    ......#....
+    ...####....
+    ...........
+    ...........
+    ...........
+    ...........
+    ...........
+    ...........
+    ...........
+    ...........
+    """
+    gc = GridConfig(map=grid, num_agents=2, agents_xy=[(0,0), (0,1)], targets_xy=[(0,5), (0,4)], disappear_on_goal=False)
+    env = gym.make("Pogema-v0", grid_config=gc)
+    ac = ActionMapping()
+    obs = env.reset()
+    env.step([ac.right, ac.right])
+    env.step([ac.right, ac.right])
+    env.step([ac.right, ac.right])
+    env.step([ac.right, ac.noop])
+    obs, reward, done, infos = env.step([ac.right, ac.noop])
+
+    assert np.isclose([0.0, 1.0], reward).all()
+    assert np.isclose([False, True], done).all()
+
+
+def test_moving_non_disapeaer():
+    env = make_pogema(GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, disappear_on_goal=False))
+    ac = ActionMapping()
+    env.reset()
+
+    env.step([ac.right, ac.noop])
+    env.step([ac.up, ac.noop])
+    env.step([ac.left, ac.noop])
+    env.step([ac.down, ac.noop])
+    env.step([ac.down, ac.noop])
+    env.step([ac.left, ac.noop])
+    env.step([ac.left, ac.noop])
+    env.step([ac.up, ac.noop])
+    env.step([ac.up, ac.noop])
+    env.step([ac.up, ac.noop])
+
+    env.step([ac.right, ac.noop])
+    env.step([ac.up, ac.noop])
+    env.step([ac.right, ac.noop])
+    env.step([ac.down, ac.noop])
+    obs, reward, done, infos = env.step([ac.right, ac.noop])
+    assert np.isclose([1.0, 0.0], reward).all()
+    assert np.isclose([True, False], done).all()
+
+
+def test_metrics():
+    _, _, _, infos = run_episode(GridConfig(num_agents=2, seed=5, size=5, max_episode_steps=64, disappear_on_goal=False))[-1]
+    assert np.isclose(infos[0]['metrics']['CSR'], 0.0)
+    assert np.isclose(infos[0]['metrics']['ISR'], 0.0)
+    assert np.isclose(infos[1]['metrics']['ISR'], 1.0)
+
+    _, _, _, infos = run_episode(GridConfig(num_agents=2, seed=5, size=5, max_episode_steps=512, disappear_on_goal=False))[-1]
+    assert np.isclose(infos[0]['metrics']['CSR'], 1.0)
+    assert np.isclose(infos[0]['metrics']['ISR'], 1.0)
+    assert np.isclose(infos[1]['metrics']['ISR'], 1.0)
+
+    _, _, _, infos = run_episode(GridConfig(num_agents=5, seed=5, size=5, max_episode_steps=64, disappear_on_goal=False))[-1]
+    assert np.isclose(infos[0]['metrics']['CSR'], 0.0)
+    assert np.isclose(infos[0]['metrics']['ISR'], 0.0)
+    assert np.isclose(infos[1]['metrics']['ISR'], 0.0)
+    assert np.isclose(infos[2]['metrics']['ISR'], 0.0)
+    assert np.isclose(infos[3]['metrics']['ISR'], 1.0)
+    assert np.isclose(infos[4]['metrics']['ISR'], 0.0)
