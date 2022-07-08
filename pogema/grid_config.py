@@ -22,7 +22,7 @@ class GridConfig(BaseModel, ):
 
     map: Union[list, str] = None
 
-    disappear_on_goal: Literal[True] = True
+    disappear_on_goal: Literal[True, False] = True
     empty_outside: bool = True
 
     map_name: str = None

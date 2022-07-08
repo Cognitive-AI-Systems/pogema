@@ -242,6 +242,7 @@ class Grid:
             y += dy
 
         self.positions_xy[agent_id] = (x, y)
+        # TODO: we need to recognize whether its an agent standing or an obstacle
         self.positions[x, y] = self.config.OBSTACLE
 
     def on_goal(self, agent_id):
@@ -264,6 +265,9 @@ class Grid:
 
 
 class CooperativeGrid(Grid):
+    def __init__(self, grid_config: GridConfig, add_artificial_border: bool = True, num_retries=10):
+        super().__init__(grid_config)
+
     def move(self, agent_id, action):
         x, y = self.positions_xy[agent_id]
         fx, fy = self.finishes_xy[agent_id]

@@ -2,7 +2,7 @@ import numpy as np
 import gym
 from gym.error import ResetNeeded
 
-from pogema.grid import Grid
+from pogema.grid import Grid, CooperativeGrid
 from pogema.grid_config import GridConfig
 from pogema.wrappers.metrics import MetricsWrapper
 from pogema.wrappers.multi_time_limit import MultiTimeLimit
@@ -61,40 +61,40 @@ class PogemaBase(gym.Env):
         return self.config.num_agents
 
 
-# class PogemaCoopFinish(PogemaBase):
-#     def __init__(self, config=GridConfig(num_agents=2)):
-#         super().__init__(config)
-#         self.num_agents = self.config.num_agents
-#         self.is_multiagent = True
-#         self.active = None
-#
-#     def _obs(self):
-#         return [self._get_agents_obs(index) for index in range(self.config.num_agents)]
-#
-#     def step(self, action: list):
-#         assert len(action) == self.config.num_agents
-#         rewards = []
-#
-#         infos = [dict() for _ in range(self.config.num_agents)]
-#
-#         dones = []
-#         for agent_idx in range(self.config.num_agents):
-#             agent_done = self.grid.move(agent_idx, action[agent_idx])
-#
-#             if agent_done:
-#                 rewards.append(1.0)
-#             else:
-#                 rewards.append(0.0)
-#
-#             dones.append(agent_done)
-#
-#         obs = self._obs()
-#         return obs, rewards, dones, infos
-#
-#     def reset(self):
-#         self.grid: CooperativeGrid = CooperativeGrid(grid_config=self.config)
-#         self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
-#         return self._obs()
+class PogemaCoopFinish(PogemaBase):
+    def __init__(self, config=GridConfig(num_agents=2)):
+        super().__init__(config)
+        self.num_agents = self.config.num_agents
+        self.is_multiagent = True
+        self.active = None
+
+    def _obs(self):
+        return [self._get_agents_obs(index) for index in range(self.config.num_agents)]
+
+    def step(self, action: list):
+        assert len(action) == self.config.num_agents
+        rewards = []
+
+        infos = [dict() for _ in range(self.config.num_agents)]
+
+        dones = []
+        for agent_idx in range(self.config.num_agents):
+            agent_done = self.grid.move(agent_idx, action[agent_idx])
+
+            if agent_done:
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+
+            dones.append(agent_done)
+
+        obs = self._obs()
+        return obs, rewards, dones, infos
+
+    def reset(self):
+        self.grid: CooperativeGrid = CooperativeGrid(grid_config=self.config)
+        self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
+        return self._obs()
 
 
 class Pogema(PogemaBase):
@@ -158,7 +158,10 @@ class Pogema(PogemaBase):
 
 
 def _make_pogema(grid_config):
-    env = Pogema(config=grid_config)
+    if grid_config.disappear_on_goal:
+        env = Pogema(config=grid_config)
+    else:
+        env = PogemaCoopFinish(config=grid_config)
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
     env = MetricsWrapper(env)
 
