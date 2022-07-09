@@ -2,4 +2,4 @@ gym==0.21
 numpy>=1.19.2
 pydantic>=1.8.2
 pytest>=6.2.5
-pettingzoo==1.12
+pettingzoo==1.14

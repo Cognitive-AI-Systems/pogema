@@ -187,6 +187,19 @@ def generate_positions_and_targets_fast(obstacles, grid_config):
     return placing(order=order, components=components, grid=grid, start_id=start_id, num_agents=c.num_agents)
 
 
+def generate_new_target_dummy(obstacles, grid_config):
+    grid = obstacles.copy()
+    x, y = 4, 4
+    while grid[x, y] == grid_config.OBSTACLE:
+        x = np.random.randint(5, grid.shape[0] - 5)
+        y = np.random.randint(5, grid.shape[1] - 5)
+    return x, y
+
+
+def generate_new_target(grid):
+    pass
+
+
 def time_it(func, num_iterations):
     start = time.monotonic()
     for index in range(num_iterations):
