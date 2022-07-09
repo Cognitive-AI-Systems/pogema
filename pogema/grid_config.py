@@ -1,11 +1,15 @@
 import sys
 from typing import Optional, Union
 from pydantic import BaseModel, validator
+import pydantic
 
 if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal
+
+class Config:
+    arbitrary_types_allowed = True
 
 
 class GridConfig(BaseModel, ):
