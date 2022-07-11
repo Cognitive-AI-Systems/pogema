@@ -196,8 +196,32 @@ def generate_new_target_dummy(obstacles, grid_config):
     return x, y
 
 
-def generate_new_target(grid):
-    pass
+def generate_new_target(grid_config, point_to_component, component_to_points, position):
+    c = grid_config
+
+    component_id = point_to_component[position]
+    component = component_to_points[component_id]
+    new_target_id = np.random.randint(len(component))  # TODO: stable random by c.seed
+    new_target = component[new_target_id]
+
+    return new_target
+
+
+def get_components(grid_config, obstacles, positions_xy, target_xy):
+    c = grid_config
+    grid = obstacles.copy()
+
+    start_id = max(c.FREE, c.OBSTACLE) + 1
+    components = bfs(grid, tuple(c.MOVES), c.size, start_id, free_cell=c.FREE)
+    height, width = obstacles.shape
+
+    comp_to_points = defaultdict(list)
+    point_to_comp = {}
+    for x in range(height):
+        for y in range(width):
+            comp_to_points[grid[x, y]].append((x, y))
+            point_to_comp[(x, y)] = grid[x, y]
+    return comp_to_points, point_to_comp
 
 
 def time_it(func, num_iterations):

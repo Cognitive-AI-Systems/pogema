@@ -8,7 +8,8 @@ import numpy as np
 from gym import utils
 from io import StringIO
 
-from pogema.generator import generate_obstacles, generate_positions_and_targets_fast
+from pogema.generator import generate_obstacles, generate_positions_and_targets_fast,\
+    get_components, generate_new_target
 from .grid_config import GridConfig
 
 
@@ -237,6 +238,7 @@ class Grid:
         self.positions[x, y] = self.config.FREE
 
         dx, dy = self.config.MOVES[action]
+
         if self.obstacles[x + dx, y + dy] == self.config.FREE and self.positions[x + dx, y + dy] == self.config.FREE:
             x += dx
             y += dy
@@ -261,6 +263,24 @@ class Grid:
         self.positions[x, y] = self.config.FREE
 
         return True
+
+
+class GridLifeLong(Grid):
+    def __init__(self, grid_config: GridConfig, add_artificial_border: bool = True, num_retries=10):
+
+        super().__init__(grid_config, add_artificial_border, num_retries)
+
+        self.component_to_points, self.point_to_component = get_components(grid_config, self.obstacles,
+                                                                           self.positions_xy, self.finishes_xy)
+
+        for i in range(len(self.positions_xy)):
+            position, target = self.positions_xy[i], self.finishes_xy[i]
+            if self.point_to_component[position] != self.point_to_component[target]:
+                warnings.warn(f"The start point ({position[0]}, {position[1]}) and the goal"
+                              f" ({target[0]}, {target[1]}) are in different components. The goal is changed.",
+                              Warning, stacklevel=2)
+                self.finishes_xy = generate_new_target(grid_config, self.point_to_component,
+                                                       self.component_to_points, position)
 
 
 class CooperativeGrid(Grid):

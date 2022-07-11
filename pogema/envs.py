@@ -2,11 +2,11 @@ import numpy as np
 import gym
 from gym.error import ResetNeeded
 
-from pogema.grid import Grid
+from pogema.grid import Grid, GridLifeLong
 from pogema.grid_config import GridConfig
 from pogema.wrappers.metrics import MetricsWrapper
 from pogema.wrappers.multi_time_limit import MultiTimeLimit
-from pogema.generator import generate_new_target_dummy
+from pogema.generator import generate_new_target
 
 
 class ActionsSampler:
@@ -185,7 +185,8 @@ class PogemaLifeLong(PogemaBase):
 
         for agent_idx in range(self.config.num_agents):
             if self.grid.on_goal(agent_idx):
-                self.grid.finishes_xy[agent_idx] = generate_new_target_dummy(self.grid.get_obstacles(), self.config)
+                self.grid.finishes_xy[agent_idx] = generate_new_target(self.config, self.grid.point_to_component,
+                                                self.grid.component_to_points, self.grid.positions_xy[agent_idx])
 
             infos[agent_idx]['is_active'] = self.active[agent_idx]
 
@@ -193,7 +194,7 @@ class PogemaLifeLong(PogemaBase):
         return obs, rewards, dones, infos
 
     def reset(self, **kwargs):
-        self.grid: Grid = Grid(grid_config=self.config)
+        self.grid: Grid = GridLifeLong(grid_config=self.config)
         self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
         return self._obs()
 
@@ -217,7 +218,10 @@ class PogemaLifeLong(PogemaBase):
 
 
 def _make_pogema(grid_config):
-    env = PogemaLifeLong(config=grid_config)
+    if grid_config.pogema_type == 'life_long':
+        env = PogemaLifeLong(config=grid_config)
+    else:
+        env = Pogema(config=grid_config)
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
     env = MetricsWrapper(env)
 

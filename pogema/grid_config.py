@@ -12,6 +12,7 @@ class GridConfig(BaseModel, ):
     FREE: Literal[0] = 0
     OBSTACLE: Literal[1] = 1
     MOVES: list = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], ]
+    pogema_type: Literal['disappearing', 'life_long'] = 'disappearing'
     seed: Optional[int] = None
     size: int = 8
     density: float = 0.3
