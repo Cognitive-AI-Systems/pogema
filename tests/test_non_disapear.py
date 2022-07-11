@@ -8,6 +8,8 @@ import numpy as np
 from pogema.grid import GridConfig
 from pogema.integrations.make_pogema import make_pogema
 
+
+
 class ActionMapping:
     noop: int = 0
     up: int = 1
@@ -66,6 +68,17 @@ def test_moving_non_disapeaer():
     assert np.isclose([1.0, 0.0], reward).all()
     assert np.isclose([True, False], done).all()
 
+def run_episode(grid_config):
+    env = make_pogema(grid_config)
+    env.reset()
+
+    obs, rewards, dones, infos = env.reset(), [None], [False], [None]
+
+    results = [[obs, rewards, dones, infos]]
+    while not all(dones):
+        results.append(env.step(env.sample_actions()))
+        dones = results[-1][-2]
+    return results
 
 def test_metrics():
     _, _, _, infos = run_episode(GridConfig(num_agents=2, seed=5, size=5, max_episode_steps=64, disappear_on_goal=False))[-1]
