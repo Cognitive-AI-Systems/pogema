@@ -1,13 +1,7 @@
-import gym 
-import pogema
-from pogema.wrappers.multi_time_limit import MultiTimeLimit
-from pogema.animation import AnimationMonitor
-from IPython.display import SVG, display
-from pogema import GridConfig
 import numpy as np
 from pogema.grid import GridConfig
 from pogema.integrations.make_pogema import make_pogema
-
+import gym
 
 
 class ActionMapping:
@@ -16,6 +10,7 @@ class ActionMapping:
     down: int = 2
     left: int = 3
     right: int = 4
+
 
 def test_non_dis():
     grid = """
@@ -41,7 +36,7 @@ def test_non_dis():
     obs, reward, done, infos = env.step([ac.right, ac.noop])
 
     assert np.isclose([0.0, 1.0], reward).all()
-    assert np.isclose([False, True], done).all()
+    assert np.isclose([False, False], done).all()
 
 
 def test_moving_non_disapeaer():
@@ -66,7 +61,7 @@ def test_moving_non_disapeaer():
     env.step([ac.down, ac.noop])
     obs, reward, done, infos = env.step([ac.right, ac.noop])
     assert np.isclose([1.0, 0.0], reward).all()
-    assert np.isclose([True, False], done).all()
+    assert np.isclose([False, False], done).all()
 
 def run_episode(grid_config):
     env = make_pogema(grid_config)
@@ -80,21 +75,3 @@ def run_episode(grid_config):
         dones = results[-1][-2]
     return results
 
-def test_metrics():
-    _, _, _, infos = run_episode(GridConfig(num_agents=2, seed=5, size=5, max_episode_steps=64, disappear_on_goal=False))[-1]
-    assert np.isclose(infos[0]['metrics']['CSR'], 0.0)
-    assert np.isclose(infos[0]['metrics']['ISR'], 0.0)
-    assert np.isclose(infos[1]['metrics']['ISR'], 1.0)
-
-    _, _, _, infos = run_episode(GridConfig(num_agents=2, seed=5, size=5, max_episode_steps=512, disappear_on_goal=False))[-1]
-    assert np.isclose(infos[0]['metrics']['CSR'], 1.0)
-    assert np.isclose(infos[0]['metrics']['ISR'], 1.0)
-    assert np.isclose(infos[1]['metrics']['ISR'], 1.0)
-
-    _, _, _, infos = run_episode(GridConfig(num_agents=5, seed=5, size=5, max_episode_steps=64, disappear_on_goal=False))[-1]
-    assert np.isclose(infos[0]['metrics']['CSR'], 0.0)
-    assert np.isclose(infos[0]['metrics']['ISR'], 0.0)
-    assert np.isclose(infos[1]['metrics']['ISR'], 0.0)
-    assert np.isclose(infos[2]['metrics']['ISR'], 0.0)
-    assert np.isclose(infos[3]['metrics']['ISR'], 1.0)
-    assert np.isclose(infos[4]['metrics']['ISR'], 0.0)

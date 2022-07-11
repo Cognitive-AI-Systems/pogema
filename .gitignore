@@ -17,3 +17,4 @@ build/lib/pogema/wrappers/multi_time_limit.py
 *.txt
 *.svg
 *.pyc
+*.ipynb

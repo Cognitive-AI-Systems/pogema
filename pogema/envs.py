@@ -77,12 +77,13 @@ class PogemaCoopFinish(PogemaBase):
 
         infos = [dict() for _ in range(self.config.num_agents)]
 
-        dones = [False for range(self.config.num_agents)]
+        dones = []
+        
         for agent_idx in range(self.config.num_agents):
             #A way to refactor:
-            '''
+            ''' 
             agent_is_on_target = self.grid.move(agent_idx, action[agent_idx])
-
+            
             if agent_is_on_target:
                 rewards.append(???)
             else:
@@ -101,7 +102,7 @@ class PogemaCoopFinish(PogemaBase):
                  dones.append(agent_done)
             
             '''
-
+            dones.append(False)
         obs = self._obs()
         return obs, rewards, dones, infos
 
