@@ -77,16 +77,30 @@ class PogemaCoopFinish(PogemaBase):
 
         infos = [dict() for _ in range(self.config.num_agents)]
 
-        dones = []
+        dones = [False for range(self.config.num_agents)]
         for agent_idx in range(self.config.num_agents):
+            #A way to refactor:
+            '''
+            agent_is_on_target = self.grid.move(agent_idx, action[agent_idx])
+
+            if agent_is_on_target:
+                rewards.append(???)
+            else:
+                rewards.append(???)
+
+            
+            '''
             agent_done = self.grid.move(agent_idx, action[agent_idx])
 
             if agent_done:
                 rewards.append(1.0)
             else:
                 rewards.append(0.0)
-
-            dones.append(agent_done)
+            '''
+            if self.config:
+                 dones.append(agent_done)
+            
+            '''
 
         obs = self._obs()
         return obs, rewards, dones, infos
@@ -160,9 +174,11 @@ class Pogema(PogemaBase):
 def _make_pogema(grid_config):
     if grid_config.disappear_on_goal:
         env = Pogema(config=grid_config)
+        env = MultiTimeLimit(env, grid_config.max_episode_steps)
     else:
         env = PogemaCoopFinish(config=grid_config)
-    env = MultiTimeLimit(env, grid_config.max_episode_steps)
+        env = MultiTimeLimit(env, grid_config.max_episode_steps)
+        # todo add CoopRewardWrapper
     env = MetricsWrapper(env)
 
     return env

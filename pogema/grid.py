@@ -242,7 +242,6 @@ class Grid:
             y += dy
 
         self.positions_xy[agent_id] = (x, y)
-        # TODO: we need to recognize whether its an agent standing or an obstacle
         self.positions[x, y] = self.config.OBSTACLE
 
     def on_goal(self, agent_id):
@@ -279,4 +278,5 @@ class CooperativeGrid(Grid):
                 y += dy
                 self.positions[x, y] = self.config.OBSTACLE
         self.positions_xy[agent_id] = (x, y)
+        #returns is_on_target
         return x == fx and y == fy
