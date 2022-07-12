@@ -5,7 +5,7 @@ from gym.error import ResetNeeded
 from pogema.grid import Grid, CooperativeGrid
 from pogema.grid_config import GridConfig
 from pogema.wrappers.metrics import MetricsWrapper
-from pogema.wrappers.multi_time_limit import MultiTimeLimit
+from pogema.wrappers.multi_time_limit import MultiTimeLimit, CoopRewardWrapper
 
 
 class ActionsSampler:
@@ -77,32 +77,17 @@ class PogemaCoopFinish(PogemaBase):
 
         infos = [dict() for _ in range(self.config.num_agents)]
 
-        dones = []
+        dones = [False for _ in range(self.config.num_agents)]
         
         for agent_idx in range(self.config.num_agents):
             #A way to refactor:
-            ''' 
-            agent_is_on_target = self.grid.move(agent_idx, action[agent_idx])
-            
-            if agent_is_on_target:
-                rewards.append(???)
-            else:
-                rewards.append(???)
-
-            
-            '''
             agent_done = self.grid.move(agent_idx, action[agent_idx])
 
             if agent_done:
                 rewards.append(1.0)
             else:
                 rewards.append(0.0)
-            '''
-            if self.config:
-                 dones.append(agent_done)
-            
-            '''
-            dones.append(False)
+
         obs = self._obs()
         return obs, rewards, dones, infos
 
@@ -179,7 +164,7 @@ def _make_pogema(grid_config):
     else:
         env = PogemaCoopFinish(config=grid_config)
         env = MultiTimeLimit(env, grid_config.max_episode_steps)
-        # todo add CoopRewardWrapper
+        env = CoopRewardWrapper(env)
     env = MetricsWrapper(env)
 
     return env
