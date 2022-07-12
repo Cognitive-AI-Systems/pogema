@@ -162,6 +162,7 @@ class PogemaLifeLong(PogemaBase):
     def __init__(self, config=GridConfig(num_agents=2)):
         super().__init__(config)
         self.active = None
+        self.random_generators: list = [np.random.default_rng(config.seed + i) for i in range(config.num_agents)]
 
     def _obs(self):
         return [self._get_agents_obs(index) for index in range(self.config.num_agents)]
@@ -185,8 +186,8 @@ class PogemaLifeLong(PogemaBase):
 
         for agent_idx in range(self.config.num_agents):
             if self.grid.on_goal(agent_idx):
-                self.grid.finishes_xy[agent_idx] = generate_new_target(self.config, self.grid.point_to_component,
-                                                self.grid.component_to_points, self.grid.positions_xy[agent_idx])
+                self.grid.finishes_xy[agent_idx] = generate_new_target(self.random_generators[agent_idx],
+                    self.grid.point_to_component, self.grid.component_to_points, self.grid.positions_xy[agent_idx])
 
             infos[agent_idx]['is_active'] = self.active[agent_idx]
 
