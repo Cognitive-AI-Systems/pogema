@@ -84,10 +84,10 @@ def test_CoopRewardWrapper():
     assert np.isclose([0.0, 0.0], reward).all()
     assert np.isclose([False, False], done).all() 
 
-    obs, reward, done, infos = env.step([ac.down, ac.down])
+    obs, reward, done, infos = env.step([ac.up, ac.up])
     assert np.isclose([0.0, 0.0], reward).all()
     assert np.isclose([False, False], done).all()
     
-    obs, reward, done, infos = env.step([ac.up, ac.up])
+    obs, reward, done, infos = env.step([ac.down, ac.down])
     assert np.isclose([1.0, 1.0], reward).all()
     assert np.isclose([True, True], done).all()

@@ -13,8 +13,8 @@ class MultiTimeLimit(TimeLimit):
 
 class CoopRewardWrapper(gym.Wrapper):
     def step(self, action):
-        observations, rewards, dones, infos = self.env.step(action)
+        observation, reward, done, info = self.env.step(action)
         for agent_idx in range(self.env.get_num_agents()):
-            if not dones[agent_idx]:
-                rewards[agent_idx] = 0.0
-        return observations, rewards, dones, infos
+            if not done[agent_idx]:
+                reward[agent_idx] = 0.0
+        return observation, reward, done, info
