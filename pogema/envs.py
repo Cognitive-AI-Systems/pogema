@@ -96,6 +96,12 @@ class PogemaCoopFinish(PogemaBase):
         self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
         return self._obs()
 
+    def get_agents_xy(self, only_active=False, ignore_borders=False):
+        return self.grid.get_agents_xy(only_active=only_active, ignore_borders=ignore_borders)
+
+    def get_targets_xy(self, only_active=False, ignore_borders=False):
+        return self.grid.get_targets_xy(only_active=only_active, ignore_borders=ignore_borders)
+
 
 class Pogema(PogemaBase):
     def __init__(self, config=GridConfig(num_agents=2)):
