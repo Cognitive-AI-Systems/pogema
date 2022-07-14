@@ -46,16 +46,21 @@ class NegativeCoopRewardWrapper(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         agents_xy = self.env.get_agents_xy()
         targets_xy = self.env.get_targets_xy()
+        flag_all_on_target = True
         for agent_idx in range(self.env.get_num_agents()):
             if not done[agent_idx]:
                 reward[agent_idx] = 0.0
             
             if agents_xy[agent_idx] == targets_xy[agent_idx]:
                 reward[agent_idx] = 1.0
-                if abs(agents_xy[0][0] - agents_xy[1][0]) + abs(agents_xy[0][1] - agents_xy[1][1]) == 1:
-                    reward[agent_idx] = 2.0
+            else:
+                flag_all_on_target = False
             if len(self.previous_agents_xy) >= 2:
-                if self.previous_agents_xy[-1][1-agent_idx] == agents_xy[1-agent_idx]:
+                if (self.previous_agents_xy[-1][1-agent_idx] == agents_xy[1-agent_idx]) and (abs(agents_xy[0][0] - agents_xy[1][0]) + abs(agents_xy[0][1] - agents_xy[1][1]) == 1):
                     reward[agent_idx] -= 0.5
+        for agent_idx in range(self.env.get_num_agents()):
+            if flag_all_on_target:
+                reward[agent_idx] = 2.0
+                
         self.previous_agents_xy.append(agents_xy)
         return observation, reward, done, info 
