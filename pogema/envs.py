@@ -5,7 +5,7 @@ from gym.error import ResetNeeded
 from pogema.grid import Grid, CooperativeGrid
 from pogema.grid_config import GridConfig
 from pogema.wrappers.metrics import MetricsWrapper
-from pogema.wrappers.multi_time_limit import MultiTimeLimit, CoopRewardWrapper, NegativeCoopRewardWrapper
+from pogema.wrappers.multi_time_limit import MultiTimeLimit, NegativeCoopRewardWrapper
 
 
 class ActionsSampler:
