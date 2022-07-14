@@ -188,7 +188,7 @@ class AnimationMonitor(gym.Wrapper):
         episode_length = len(self.dones_history)
         if egocentric_idx is not None:
             for step_idx, dones in enumerate(self.dones_history):
-                if dones[egocentric_idx]:
+                if dones[egocentric_idx] and self.grid_cfg.pogema_type != 'life_long':
                     episode_length = min(len(self.dones_history), step_idx + 1)
                     break
         gh = GridHolder(agents_xy=grid.positions_xy, width=len(grid.obstacles), height=len(grid.obstacles[0]),
@@ -291,8 +291,11 @@ class AnimationMonitor(gym.Wrapper):
                         opacity.append(str(cfg.shaded_opacity))
 
             visibility = []
-            for dones in gh.agents_done_history[:gh.episode_length]:
-                visibility.append('hidden' if dones[agent_idx] else "visible")
+            if self.grid_cfg.pogema_type == 'life_long':
+                visibility = ['visible'] * self.grid_cfg.num_agents
+            else:
+                for dones in gh.agents_done_history[:gh.episode_length]:
+                    visibility.append('hidden' if dones[agent_idx] else "visible")
 
             agent.add_animation(self.compressed_anim('cy', y_path, cfg.time_scale))
             agent.add_animation(self.compressed_anim('cx', x_path, cfg.time_scale))
@@ -368,8 +371,11 @@ class AnimationMonitor(gym.Wrapper):
                         opacity.append(str(cfg.shaded_opacity))
 
             visibility = []
-            for dones in gh.agents_done_history[:gh.episode_length]:
-                visibility.append('hidden' if dones[target_idx] else "visible")
+            if self.grid_cfg.pogema_type == 'life_long':
+                visibility = ['visible'] * self.grid_cfg.num_agents
+            else:
+                for dones in gh.agents_done_history[:gh.episode_length]:
+                    visibility.append('hidden' if dones[target_idx] else "visible")
 
             target.add_animation(self.compressed_anim('cy', y_path, cfg.time_scale))
             target.add_animation(self.compressed_anim('cx', x_path, cfg.time_scale))
