@@ -5,7 +5,7 @@ from gym.error import ResetNeeded
 from pogema.grid import Grid, CooperativeGrid
 from pogema.grid_config import GridConfig
 from pogema.wrappers.metrics import MetricsWrapper
-from pogema.wrappers.multi_time_limit import MultiTimeLimit, CoopRewardWrapper
+from pogema.wrappers.multi_time_limit import MultiTimeLimit, CoopRewardWrapper, NegativeCoopRewardWrapper
 
 
 class ActionsSampler:
@@ -170,7 +170,8 @@ def _make_pogema(grid_config):
     else:
         env = PogemaCoopFinish(config=grid_config)
         env = MultiTimeLimit(env, grid_config.max_episode_steps)
-        env = CoopRewardWrapper(env)
+        # env = CoopRewardWrapper(env)
+        env = NegativeCoopRewardWrapper(env)
     env = MetricsWrapper(env)
 
     return env
