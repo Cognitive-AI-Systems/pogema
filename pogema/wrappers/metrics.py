@@ -65,8 +65,9 @@ class MetricsWrapperLifeLong(gym.Wrapper):
 
             for agent_idx in range(self._num_agents):
                 infos[agent_idx][self._group_name].update(AchievedGoals=self._AchievedGoals[agent_idx])
-                infos[agent_idx][self._group_name].\
-                    update(AverageTimeToGoal=self._LastGoal[agent_idx] / self._AchievedGoals[agent_idx])
+                if self._AchievedGoals[agent_idx]:
+                    infos[agent_idx][self._group_name].\
+                        update(AverageTimeToGoal=self._LastGoal[agent_idx] / self._AchievedGoals[agent_idx])
 
         return obs, reward, done, infos
 

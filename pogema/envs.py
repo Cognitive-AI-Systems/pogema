@@ -4,7 +4,7 @@ from gym.error import ResetNeeded
 
 from pogema.grid import Grid, GridLifeLong
 from pogema.grid_config import GridConfig
-from pogema.wrappers.metrics import MetricsWrapper
+from pogema.wrappers.metrics import MetricsWrapper, MetricsWrapperLifeLong
 from pogema.wrappers.multi_time_limit import MultiTimeLimit
 from pogema.generator import generate_new_target
 
@@ -221,9 +221,10 @@ class PogemaLifeLong(PogemaBase):
 def _make_pogema(grid_config):
     if grid_config.pogema_type == 'life_long':
         env = PogemaLifeLong(config=grid_config)
+        env = MetricsWrapperLifeLong(env)
     else:
         env = Pogema(config=grid_config)
+        env = MetricsWrapper(env)
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
-    env = MetricsWrapper(env)
 
     return env
