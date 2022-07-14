@@ -40,27 +40,31 @@ class CoopRewardWrapper(gym.Wrapper):
 class NegativeCoopRewardWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        self.previous_agents_xy = []
+        self.prev_observation = None
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
-        agents_xy = self.env.get_agents_xy()
-        targets_xy = self.env.get_targets_xy()
+        centre = int(len(observation[0][0][0]) / 2)
         flag_all_on_target = True
         for agent_idx in range(self.env.get_num_agents()):
             if not done[agent_idx]:
                 reward[agent_idx] = 0.0
-            
-            if agents_xy[agent_idx] == targets_xy[agent_idx]:
+            if np.isclose(1.0, observation[agent_idx][2][centre][centre]):
                 reward[agent_idx] = 1.0
             else:
                 flag_all_on_target = False
-            if len(self.previous_agents_xy) >= 2:
-                if (self.previous_agents_xy[-1][1-agent_idx] == agents_xy[1-agent_idx]) and (abs(agents_xy[0][0] - agents_xy[1][0]) + abs(agents_xy[0][1] - agents_xy[1][1]) == 1):
+            if self.prev_observation is not None:
+                if np.isclose(1.0, observation[agent_idx][1][centre][centre+1]) and np.isclose(1.0, self.prev_observation[agent_idx][1][centre][centre+1]):
                     reward[agent_idx] -= 0.5
+                elif np.isclose(1.0, observation[agent_idx][1][centre][centre-1]) and np.isclose(1.0, self.prev_observation[agent_idx][1][centre][centre-1]):
+                    reward[agent_idx] -= 0.5
+                elif np.isclose(1.0, observation[agent_idx][1][centre+1][centre]) and np.isclose(1.0, self.prev_observation[agent_idx][1][centre+1][centre]):
+                    reward[agent_idx] -= 0.5
+                elif np.isclose(1.0, observation[agent_idx][1][centre-1][centre]) and np.isclose(1.0, self.prev_observation[agent_idx][1][centre-1][centre]):
+                    reward[agent_idx] -= 0.5
+                    
         for agent_idx in range(self.env.get_num_agents()):
             if flag_all_on_target:
                 reward[agent_idx] = 2.0
-                
-        self.previous_agents_xy.append(agents_xy)
+        self.prev_observation = observation
         return observation, reward, done, info 
