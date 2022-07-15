@@ -186,7 +186,6 @@ class PogemaLifeLong(PogemaBase):
             on_goal = self.grid.on_goal(agent_idx)
             if on_goal and self.active[agent_idx]:
                 dones[agent_idx] = True
-                self._steps_after_new_target[agent_idx] = 0
                 rewards.append(1.0)
             else:
                 rewards.append(0.0)
@@ -197,6 +196,7 @@ class PogemaLifeLong(PogemaBase):
                                                                        self.grid.point_to_component,
                                                                        self.grid.component_to_points,
                                                                        self.grid.positions_xy[agent_idx])
+                self._steps_after_new_target[agent_idx] = 0
 
             infos[agent_idx]['is_active'] = self.active[agent_idx]
 
@@ -206,6 +206,7 @@ class PogemaLifeLong(PogemaBase):
     def reset(self, **kwargs):
         self.grid: Grid = GridLifeLong(grid_config=self.config)
         self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
+        self._steps_after_new_target = [0] * self.config.num_agents
         return self._obs()
 
     def get_agents_xy_relative(self):
