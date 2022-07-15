@@ -51,6 +51,7 @@ class CoopRewardWrapper(gym.Wrapper):
                 reward[agent_idx] = 0.0
             elif np.isclose(1.0, observation[agent_idx][2][centre][centre]):
                 reward[agent_idx] = 1.0
+        return observation, reward, done, info
 
 class NegativeCoopRewardWrapper(gym.Wrapper):
     def __init__(self, env):
