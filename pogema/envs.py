@@ -163,6 +163,9 @@ class PogemaLifeLong(PogemaBase):
         super().__init__(config)
         self.active = None
         self.random_generators: list = [np.random.default_rng(config.seed + i) for i in range(config.num_agents)]
+        self._steps_after_new_target = [0] * self.config.num_agents
+        if self.config.steps_before_renew_target is None:
+            self.config.steps_before_renew_target = self.config.max_episode_steps
 
     def _obs(self):
         return [self._get_agents_obs(index) for index in range(self.config.num_agents)]
@@ -175,19 +178,25 @@ class PogemaLifeLong(PogemaBase):
 
         dones = [False] * self.config.num_agents
         for agent_idx in range(self.config.num_agents):
+            self._steps_after_new_target[agent_idx] += 1
+
             if self.active[agent_idx]:
                 self.grid.move(agent_idx, action[agent_idx])
 
             on_goal = self.grid.on_goal(agent_idx)
             if on_goal and self.active[agent_idx]:
+                dones[agent_idx] = True
+                self._steps_after_new_target[agent_idx] = 0
                 rewards.append(1.0)
             else:
                 rewards.append(0.0)
 
-        for agent_idx in range(self.config.num_agents):
-            if self.grid.on_goal(agent_idx):
+            if self._steps_after_new_target[agent_idx] == self.config.steps_before_renew_target or \
+                    self.grid.on_goal(agent_idx):
                 self.grid.finishes_xy[agent_idx] = generate_new_target(self.random_generators[agent_idx],
-                    self.grid.point_to_component, self.grid.component_to_points, self.grid.positions_xy[agent_idx])
+                                                                       self.grid.point_to_component,
+                                                                       self.grid.component_to_points,
+                                                                       self.grid.positions_xy[agent_idx])
 
             infos[agent_idx]['is_active'] = self.active[agent_idx]
 

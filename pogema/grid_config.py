@@ -30,6 +30,7 @@ class GridConfig(BaseModel, ):
 
     integration: Literal['SampleFactory', 'PyMARL', 'rllib', 'gym', 'PettingZoo'] = None
     max_episode_steps: int = 64
+    steps_before_renew_target: Optional[int] = None
 
     @validator('seed')
     def seed_initialization(cls, v):
