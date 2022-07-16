@@ -49,9 +49,6 @@ class CoopRewardWrapper(gym.Wrapper):
         observation, reward, done, info = self.env.step(action)
         self.elapsed_steps += 1
         centre = int(len(observation[0][0][0]) / 2)
-        if self.elapsed_steps >= self._max_episode_steps:
-            for agent_idx in range(self.env.get_num_agents()):
-                info[agent_idx]["TimeLimit.truncated"] = not np.isclose(1.0, observation[agent_idx][2][centre][centre])
         for agent_idx in range(self.env.get_num_agents()):
             if self.elapsed_steps >= self._max_episode_steps:
                 reward[agent_idx] = 0.0
