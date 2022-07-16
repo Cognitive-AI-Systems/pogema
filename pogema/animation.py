@@ -261,7 +261,7 @@ class AnimationMonitor(gym.Wrapper):
 
         visibility = []
         for dones in gh.agents_done_history[:gh.episode_length]:
-            visibility.append('hidden' if dones[agent_idx] else "visible")
+            visibility.append('hidden' if dones[agent_idx] and self.grid_cfg.disappear_on_goal else "visible")
 
         view.add_animation(self.compressed_anim('x', x_path, cfg.time_scale))
         view.add_animation(self.compressed_anim('y', y_path, cfg.time_scale))
@@ -288,7 +288,7 @@ class AnimationMonitor(gym.Wrapper):
 
             visibility = []
             for dones in gh.agents_done_history[:gh.episode_length]:
-                visibility.append('hidden' if dones[agent_idx] else "visible")
+                visibility.append('hidden' if dones[agent_idx] and self.grid_cfg.disappear_on_goal else "visible")
 
             agent.add_animation(self.compressed_anim('cy', y_path, cfg.time_scale))
             agent.add_animation(self.compressed_anim('cx', x_path, cfg.time_scale))
@@ -349,7 +349,7 @@ class AnimationMonitor(gym.Wrapper):
                     continue
             visibility = []
             for dones in gh.agents_done_history[:gh.episode_length]:
-                visibility.append('hidden' if dones[target_idx] else "visible")
+                visibility.append('hidden' if dones[target_idx] and self.grid_cfg.disappear_on_goal else "visible")
             target.add_animation(self.compressed_anim("visibility", visibility, cfg.time_scale))
 
     def create_obstacles(self, grid_holder):
