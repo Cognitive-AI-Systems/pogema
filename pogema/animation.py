@@ -45,6 +45,7 @@ class GridHolder(BaseModel):
     agents_xy_history: list = None
     agents_done_history: list = None
     targets_xy: list = None
+    targets_xy_history: list = None
     obstacles: typing.Any = None
     egocentric_idx: int = None
     episode_length: int = None
@@ -131,6 +132,7 @@ class AnimationMonitor(gym.Wrapper):
         self.cfg: AnimationSettings = animation_settings
         self.dones_history = None
         self.agents_xy_history = None
+        self.targets_xy_history = None
         self.egocentric_idx = egocentric_idx
         self._episode_idx = 0
 
@@ -139,6 +141,7 @@ class AnimationMonitor(gym.Wrapper):
 
         self.dones_history.append(dones)
         self.agents_xy_history.append(deepcopy(self.env.grid.positions_xy))
+        self.targets_xy_history.append(deepcopy(self.env.grid.finishes_xy))
         if all(dones):
             if not os.path.exists(self.cfg.directory):
                 logger.info(f"Creating pogema monitor directory {self.cfg.directory}", )
@@ -170,6 +173,7 @@ class AnimationMonitor(gym.Wrapper):
         self.grid_cfg: GridConfig = self.env.config
         self.dones_history = [[False for _ in range(self.env.config.num_agents)]]
         self.agents_xy_history = [deepcopy(self.env.grid.positions_xy)]
+        self.targets_xy_history = [deepcopy(self.env.grid.finishes_xy)]
         return obs
 
     def create_animation(self, egocentric_idx):
@@ -184,11 +188,11 @@ class AnimationMonitor(gym.Wrapper):
         episode_length = len(self.dones_history)
         if egocentric_idx is not None and self.grid_cfg.disappear_on_goal:
             for step_idx, dones in enumerate(self.dones_history):
-                if dones[egocentric_idx]:
+                if dones[egocentric_idx] and self.grid_cfg.pogema_type != 'life_long':
                     episode_length = min(len(self.dones_history), step_idx + 1)
                     break
         gh = GridHolder(agents_xy=grid.positions_xy, width=len(grid.obstacles), height=len(grid.obstacles[0]),
-                        agents_xy_history=self.agents_xy_history,
+                        agents_xy_history=self.agents_xy_history, targets_xy_history=self.targets_xy_history,
                         agents_done_history=self.dones_history, egocentric_idx=egocentric_idx, obstacles=grid.obstacles,
                         colors=agents_colors, targets_xy=grid.finishes_xy, episode_length=episode_length)
 
@@ -287,8 +291,11 @@ class AnimationMonitor(gym.Wrapper):
                         opacity.append(str(cfg.shaded_opacity))
 
             visibility = []
-            for dones in gh.agents_done_history[:gh.episode_length]:
-                visibility.append('hidden' if dones[agent_idx] and self.grid_cfg.disappear_on_goal else "visible")
+            if self.grid_cfg.pogema_type == 'life_long':
+                visibility = ['visible'] * self.grid_cfg.num_agents
+            else:
+                for dones in gh.agents_done_history[:gh.episode_length]:
+                    visibility.append('hidden' if dones[agent_idx] and self.grid_cfg.disappear_on_goal else "visible")
 
             agent.add_animation(self.compressed_anim('cy', y_path, cfg.time_scale))
             agent.add_animation(self.compressed_anim('cx', x_path, cfg.time_scale))
@@ -347,10 +354,34 @@ class AnimationMonitor(gym.Wrapper):
             if gh.egocentric_idx is not None:
                 if gh.egocentric_idx != target_idx:
                     continue
+
+            x_path = []
+            y_path = []
+            opacity = []
+            for targets_xy in gh.targets_xy_history[:gh.episode_length]:
+                x, y = targets_xy[target_idx]
+                x_path.append(str(cfg.draw_start + y * cfg.scale_size))
+                y_path.append(str(-cfg.draw_start + -(gh.width - x - 1) * cfg.scale_size))
+
+                if gh.egocentric_idx is not None:
+                    ego_x, ego_y = targets_xy[gh.egocentric_idx]
+                    if self.check_in_radius(x, y, ego_x, ego_y, self.grid_cfg.obs_radius):
+                        opacity.append('1.0')
+                    else:
+                        opacity.append(str(cfg.shaded_opacity))
+
             visibility = []
-            for dones in gh.agents_done_history[:gh.episode_length]:
-                visibility.append('hidden' if dones[target_idx] and self.grid_cfg.disappear_on_goal else "visible")
-            target.add_animation(self.compressed_anim("visibility", visibility, cfg.time_scale))
+            if self.grid_cfg.pogema_type == 'life_long':
+                visibility = ['visible'] * self.grid_cfg.num_agents
+            else:
+                for dones in gh.agents_done_history[:gh.episode_length]:
+                    visibility.append('hidden' if dones[target_idx] and self.grid_cfg.disappear_on_goal else "visible")
+
+            target.add_animation(self.compressed_anim('cy', y_path, cfg.time_scale))
+            target.add_animation(self.compressed_anim('cx', x_path, cfg.time_scale))
+            target.add_animation(self.compressed_anim('visibility', visibility, cfg.time_scale))
+            if opacity:
+                target.add_animation(self.compressed_anim('opacity', opacity, cfg.time_scale))
 
     def create_obstacles(self, grid_holder):
         gh = grid_holder

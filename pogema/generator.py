@@ -187,6 +187,32 @@ def generate_positions_and_targets_fast(obstacles, grid_config):
     return placing(order=order, components=components, grid=grid, start_id=start_id, num_agents=c.num_agents)
 
 
+def generate_new_target(rnd_generator, point_to_component, component_to_points, position):
+
+    component_id = point_to_component[position]
+    component = component_to_points[component_id]
+    new_target = tuple(*rnd_generator.choice(component, 1))
+
+    return new_target
+
+
+def get_components(grid_config, obstacles, positions_xy, target_xy):
+    c = grid_config
+    grid = obstacles.copy()
+
+    start_id = max(c.FREE, c.OBSTACLE) + 1
+    components = bfs(grid, tuple(c.MOVES), c.size, start_id, free_cell=c.FREE)
+    height, width = obstacles.shape
+
+    comp_to_points = defaultdict(list)
+    point_to_comp = {}
+    for x in range(height):
+        for y in range(width):
+            comp_to_points[grid[x, y]].append((x, y))
+            point_to_comp[(x, y)] = grid[x, y]
+    return comp_to_points, point_to_comp
+
+
 def time_it(func, num_iterations):
     start = time.monotonic()
     for index in range(num_iterations):

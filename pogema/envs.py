@@ -2,10 +2,11 @@ import numpy as np
 import gym
 from gym.error import ResetNeeded
 
-from pogema.grid import Grid, CooperativeGrid
+from pogema.grid import Grid, GridLifeLong, CooperativeGrid
 from pogema.grid_config import GridConfig
-from pogema.wrappers.metrics import MetricsWrapper
+from pogema.wrappers.metrics import MetricsWrapper, MetricsWrapperLifeLong
 from pogema.wrappers.multi_time_limit import MultiTimeLimit, CoopRewardWrapper
+from pogema.generator import generate_new_target
 
 
 class ActionsSampler:
@@ -103,6 +104,7 @@ class PogemaCoopFinish(PogemaBase):
         return self.grid.get_targets_xy(only_active=only_active, ignore_borders=ignore_borders)
 
 
+
 class Pogema(PogemaBase):
     def __init__(self, config=GridConfig(num_agents=2)):
         super().__init__(config)
@@ -163,14 +165,91 @@ class Pogema(PogemaBase):
         return self.grid.get_state(ignore_borders=ignore_borders, as_dict=as_dict)
 
 
+class PogemaLifeLong(PogemaBase):
+    def __init__(self, config=GridConfig(num_agents=2)):
+        super().__init__(config)
+        self.active = None
+        self.random_generators: list = [np.random.default_rng(config.seed + i) for i in range(config.num_agents)]
+        self._steps_after_new_target = [0] * self.config.num_agents
+        if self.config.steps_before_renew_target is None:
+            self.config.steps_before_renew_target = self.config.max_episode_steps
+
+    def _obs(self):
+        return [self._get_agents_obs(index) for index in range(self.config.num_agents)]
+
+    def step(self, action: list):
+        assert len(action) == self.config.num_agents
+        rewards = []
+
+        infos = [dict() for _ in range(self.config.num_agents)]
+
+        dones = [False] * self.config.num_agents
+        for agent_idx in range(self.config.num_agents):
+            self._steps_after_new_target[agent_idx] += 1
+
+            if self.active[agent_idx]:
+                self.grid.move(agent_idx, action[agent_idx])
+
+            on_goal = self.grid.on_goal(agent_idx)
+            if on_goal and self.active[agent_idx]:
+                dones[agent_idx] = True
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+
+            if self._steps_after_new_target[agent_idx] == self.config.steps_before_renew_target or \
+                    self.grid.on_goal(agent_idx):
+                self.grid.finishes_xy[agent_idx] = generate_new_target(self.random_generators[agent_idx],
+                                                                       self.grid.point_to_component,
+                                                                       self.grid.component_to_points,
+                                                                       self.grid.positions_xy[agent_idx])
+                self._steps_after_new_target[agent_idx] = 0
+
+            infos[agent_idx]['is_active'] = self.active[agent_idx]
+
+        obs = self._obs()
+        return obs, rewards, dones, infos
+
+    def reset(self, **kwargs):
+        self.grid: Grid = GridLifeLong(grid_config=self.config)
+        self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
+        self._steps_after_new_target = [0] * self.config.num_agents
+        return self._obs()
+
+    def get_agents_xy_relative(self):
+        return self.grid.get_agents_xy_relative()
+
+    def get_targets_xy_relative(self):
+        return self.grid.get_targets_xy_relative()
+
+    def get_obstacles(self, ignore_borders=False):
+        return self.grid.get_obstacles(ignore_borders=ignore_borders)
+
+    def get_agents_xy(self, only_active=False, ignore_borders=False):
+        return self.grid.get_agents_xy(only_active=only_active, ignore_borders=ignore_borders)
+
+    def get_targets_xy(self, only_active=False, ignore_borders=False):
+        return self.grid.get_targets_xy(only_active=only_active, ignore_borders=ignore_borders)
+
+    def get_state(self, ignore_borders=False, as_dict=False):
+        return self.grid.get_state(ignore_borders=ignore_borders, as_dict=as_dict)
+
+
 def _make_pogema(grid_config):
-    if grid_config.disappear_on_goal:
-        env = Pogema(config=grid_config)
-        env = MultiTimeLimit(env, grid_config.max_episode_steps)
-    else:
+    if grid_config.pogema_type == 'life_long':
+        env = PogemaLifeLong(config=grid_config)
+    elif grid_config.pogema_type == 'non_disappearing':
+        grid_config.disappear_on_goal = False
         env = PogemaCoopFinish(config=grid_config)
-        env = MultiTimeLimit(env, grid_config.max_episode_steps)
+    else:
+        env = Pogema(config=grid_config)
+    env = MultiTimeLimit(env, grid_config.max_episode_steps)
+    if grid_config.pogema_type == 'life_long':
+        env = MetricsWrapperLifeLong(env)
+    elif grid_config.pogema_type == 'non_disappearing':
         env = CoopRewardWrapper(env, grid_config.max_episode_steps)
-    env = MetricsWrapper(env)
+        env = MetricsWrapper(env)
+    else:
+        env = MetricsWrapper(env)
 
     return env
