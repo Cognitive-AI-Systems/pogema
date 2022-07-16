@@ -35,8 +35,8 @@ def test_non_dis():
     env.step([ac.right, ac.noop])
     obs, reward, done, infos = env.step([ac.right, ac.noop])
     print(reward, done)
-    assert np.isclose([0.0, 0.0], reward).all()
-    assert np.isclose([False, False], done).all()
+    assert np.isclose([0.0, 1.0], reward).all()
+    assert np.isclose([False, True], done).all()    
 
 
 def test_moving_non_disapeaer():
@@ -60,8 +60,8 @@ def test_moving_non_disapeaer():
     env.step([ac.right, ac.noop])
     env.step([ac.down, ac.noop])
     obs, reward, done, infos = env.step([ac.right, ac.noop])
-    assert np.isclose([0.0, 0.0], reward).all()
-    assert np.isclose([False, False], done).all()
+    assert np.isclose([1.0, 0.0], reward).all()
+    assert np.isclose([True, False], done).all()
 
 def run_episode(grid_config):
     env = make_pogema(grid_config)
@@ -81,13 +81,13 @@ def test_CoopRewardWrapper():
     env.reset()
 
     obs, reward, done, infos = env.step([ac.down, ac.down])
-    assert np.isclose([0.0, 0.0], reward).all()
-    assert np.isclose([False, False], done).all() 
+    assert np.isclose([1.0, 1.0], reward).all()
+    assert np.isclose([True, True], done).all() 
 
     obs, reward, done, infos = env.step([ac.up, ac.up])
     assert np.isclose([0.0, 0.0], reward).all()
     assert np.isclose([False, False], done).all()
     
     obs, reward, done, infos = env.step([ac.down, ac.down])
-    assert np.isclose([1.0, 1.0], reward).all()
+    assert np.isclose([0.5, 0.5], reward).all()
     assert np.isclose([True, True], done).all()
