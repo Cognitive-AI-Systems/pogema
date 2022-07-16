@@ -35,7 +35,7 @@ def test_non_dis():
     env.step([ac.right, ac.noop])
     obs, reward, done, infos = env.step([ac.right, ac.noop])
     print(reward, done)
-    assert np.isclose([0.0, 1.0], reward).all()
+    assert np.isclose([0.0, 0.0], reward).all()
     assert np.isclose([False, True], done).all()    
 
 
@@ -76,12 +76,12 @@ def run_episode(grid_config):
     return results
 
 def test_CoopRewardWrapper():
-    env = env = make_pogema(GridConfig(num_agents=2, size=2, disappear_on_goal=False, max_episode_steps=3, density=0.0, agents_xy=[(0,0), (0,1)], targets_xy=[(1,0), (1,1)]))
+    env = env = make_pogema(GridConfig(num_agents=2, size=2, pogema_type="non_disappearing", max_episode_steps=3, density=0.0, agents_xy=[(0,0), (0,1)], targets_xy=[(1,0), (1,1)]))
     ac = ActionMapping()
     env.reset()
 
     obs, reward, done, infos = env.step([ac.down, ac.down])
-    assert np.isclose([1.0, 1.0], reward).all()
+    assert np.isclose([0.0, 0.0], reward).all()
     assert np.isclose([True, True], done).all() 
 
     obs, reward, done, infos = env.step([ac.up, ac.up])
@@ -89,5 +89,5 @@ def test_CoopRewardWrapper():
     assert np.isclose([False, False], done).all()
     
     obs, reward, done, infos = env.step([ac.down, ac.down])
-    assert np.isclose([0.5, 0.5], reward).all()
+    assert np.isclose([1.0, 1.0], reward).all()
     assert np.isclose([True, True], done).all()
