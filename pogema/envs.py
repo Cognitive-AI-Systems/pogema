@@ -231,10 +231,12 @@ class PogemaLifeLong(PogemaBase):
 def _make_pogema(grid_config):
     if grid_config.pogema_type == 'life_long':
         env = PogemaLifeLong(config=grid_config)
-        env = MetricsWrapperLifeLong(env)
     else:
         env = Pogema(config=grid_config)
-        env = MetricsWrapper(env)
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
+    if grid_config.pogema_type == 'life_long':
+        env = MetricsWrapperLifeLong(env)
+    else:
+        env = MetricsWrapper(env)
 
     return env
