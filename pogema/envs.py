@@ -170,8 +170,8 @@ def _make_pogema(grid_config):
     else:
         env = PogemaCoopFinish(config=grid_config)
         env = MultiTimeLimit(env, grid_config.max_episode_steps)
-        env = CoopRewardWrapper(env, grid_config.max_episode_steps)
-        # env = NegativeCoopRewardWrapper(env)
+        # env = CoopRewardWrapper(env, grid_config.max_episode_steps)
+        env = NegativeCoopRewardWrapper(env, grid_config.max_episode_steps)
     env = MetricsWrapper(env)
 
     return env
