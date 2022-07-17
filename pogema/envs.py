@@ -2,10 +2,10 @@ import numpy as np
 import gym
 from gym.error import ResetNeeded
 
-from pogema.grid import Grid, GridLifeLong
+from pogema.grid import Grid, GridLifeLong, CooperativeGrid
 from pogema.grid_config import GridConfig
 from pogema.wrappers.metrics import MetricsWrapper, MetricsWrapperLifeLong
-from pogema.wrappers.multi_time_limit import MultiTimeLimit
+from pogema.wrappers.multi_time_limit import MultiTimeLimit, CoopRewardWrapper
 from pogema.generator import generate_new_target
 
 
@@ -62,40 +62,47 @@ class PogemaBase(gym.Env):
         return self.config.num_agents
 
 
-# class PogemaCoopFinish(PogemaBase):
-#     def __init__(self, config=GridConfig(num_agents=2)):
-#         super().__init__(config)
-#         self.num_agents = self.config.num_agents
-#         self.is_multiagent = True
-#         self.active = None
-#
-#     def _obs(self):
-#         return [self._get_agents_obs(index) for index in range(self.config.num_agents)]
-#
-#     def step(self, action: list):
-#         assert len(action) == self.config.num_agents
-#         rewards = []
-#
-#         infos = [dict() for _ in range(self.config.num_agents)]
-#
-#         dones = []
-#         for agent_idx in range(self.config.num_agents):
-#             agent_done = self.grid.move(agent_idx, action[agent_idx])
-#
-#             if agent_done:
-#                 rewards.append(1.0)
-#             else:
-#                 rewards.append(0.0)
-#
-#             dones.append(agent_done)
-#
-#         obs = self._obs()
-#         return obs, rewards, dones, infos
-#
-#     def reset(self):
-#         self.grid: CooperativeGrid = CooperativeGrid(grid_config=self.config)
-#         self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
-#         return self._obs()
+class PogemaCoopFinish(PogemaBase):
+    def __init__(self, config=GridConfig(num_agents=2)):
+        super().__init__(config)
+        self.num_agents = self.config.num_agents
+        self.is_multiagent = True
+        self.active = None
+
+    def _obs(self):
+        return [self._get_agents_obs(index) for index in range(self.config.num_agents)]
+
+    def step(self, action: list):
+        assert len(action) == self.config.num_agents
+        rewards = []
+
+        infos = [dict() for _ in range(self.config.num_agents)]
+
+        dones = []
+        
+        for agent_idx in range(self.config.num_agents):
+            #A way to refactor:
+            agent_done = self.grid.move(agent_idx, action[agent_idx])
+            on_goal = self.grid.on_goal(agent_idx)
+            if agent_done:
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+            dones.append(on_goal)
+        obs = self._obs()
+        return obs, rewards, dones, infos
+
+    def reset(self):
+        self.grid: CooperativeGrid = CooperativeGrid(grid_config=self.config)
+        self.active = {agent_idx: True for agent_idx in range(self.config.num_agents)}
+        return self._obs()
+
+    def get_agents_xy(self, only_active=False, ignore_borders=False):
+        return self.grid.get_agents_xy(only_active=only_active, ignore_borders=ignore_borders)
+
+    def get_targets_xy(self, only_active=False, ignore_borders=False):
+        return self.grid.get_targets_xy(only_active=only_active, ignore_borders=ignore_borders)
+
 
 
 class Pogema(PogemaBase):
@@ -231,11 +238,17 @@ class PogemaLifeLong(PogemaBase):
 def _make_pogema(grid_config):
     if grid_config.pogema_type == 'life_long':
         env = PogemaLifeLong(config=grid_config)
+    elif grid_config.pogema_type == 'non_disappearing':
+        grid_config.disappear_on_goal = False
+        env = PogemaCoopFinish(config=grid_config)
     else:
         env = Pogema(config=grid_config)
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
     if grid_config.pogema_type == 'life_long':
         env = MetricsWrapperLifeLong(env)
+    elif grid_config.pogema_type == 'non_disappearing':
+        env = CoopRewardWrapper(env, grid_config.max_episode_steps)
+        env = MetricsWrapper(env)
     else:
         env = MetricsWrapper(env)
 
