@@ -11,7 +11,7 @@ class IsMultiAgentWrapper(gym.Wrapper):
 
     @property
     def num_agents(self):
-        return self.env.get_num_agents()
+        return self.get_num_agents()
 
 
 class MetricsForwardingWrapper(gym.Wrapper):

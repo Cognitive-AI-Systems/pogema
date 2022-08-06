@@ -17,7 +17,7 @@ def generate_positions_and_targets(obstacles, grid_config: GridConfig):
     grid = obstacles.copy()
     q = []
     # pick free id
-    current_id = max(c.FREE, c.OBSTACLE) + 1
+    current_id = max(int(c.FREE), int(c.OBSTACLE)) + 1
 
     for x in range(c.size):
         for y in range(c.size):

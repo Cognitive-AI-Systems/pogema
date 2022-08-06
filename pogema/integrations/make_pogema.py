@@ -26,7 +26,7 @@ class SingleAgentWrapper(gym.Wrapper):
 
     def step(self, action):
         observations, rewards, dones, infos = self.env.step(
-            [action] + [self.env.action_space.sample() for _ in range(self.config.num_agents - 1)])
+            [action] + [self.env.action_space.sample() for _ in range(self.get_num_agents() - 1)])
         return observations[0], rewards[0], dones[0], infos[0]
 
     def reset(self, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None, ):

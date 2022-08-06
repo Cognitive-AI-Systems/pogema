@@ -160,7 +160,6 @@ class AnimationMonitor(gym.Wrapper):
 
     def __init__(self, env, animation_config=AnimationConfig()):
         super().__init__(env)
-        self.grid_cfg = None
         self.svg_settings: AnimationSettings = AnimationSettings()
         self.animation_config: AnimationConfig = animation_config
         self.dones_history = None
@@ -178,8 +177,8 @@ class AnimationMonitor(gym.Wrapper):
         obs, reward, dones, info = self.env.step(action)
 
         self.dones_history.append(dones)
-        self.agents_xy_history.append(deepcopy(self.env.grid.positions_xy))
-        self.targets_xy_history.append(deepcopy(self.env.grid.finishes_xy))
+        self.agents_xy_history.append(deepcopy(self.grid.positions_xy))
+        self.targets_xy_history.append(deepcopy(self.grid.finishes_xy))
         if all(dones):
             save_tau = self.animation_config.save_every_idx_episode
             if save_tau:
@@ -189,7 +188,7 @@ class AnimationMonitor(gym.Wrapper):
                         os.makedirs(self.animation_config.directory, exist_ok=True)
 
                     path = os.path.join(self.animation_config.directory,
-                                        self.pick_name(self.grid_cfg, self._episode_idx))
+                                        self.pick_name(self.grid_config, self._episode_idx))
                     self.save_animation(path)
 
         return obs, reward, dones, info
@@ -226,10 +225,10 @@ class AnimationMonitor(gym.Wrapper):
 
         self._episode_idx += 1
 
-        self.grid_cfg: GridConfig = self.env.config
-        self.dones_history = [[False for _ in range(self.env.config.num_agents)]]
-        self.agents_xy_history = [deepcopy(self.env.grid.positions_xy)]
-        self.targets_xy_history = [deepcopy(self.env.grid.finishes_xy)]
+        # self.grid_config: GridConfig = self.grid_config
+        self.dones_history = [[False for _ in range(self.grid_config.num_agents)]]
+        self.agents_xy_history = [deepcopy(self.grid.positions_xy)]
+        self.targets_xy_history = [deepcopy(self.grid.finishes_xy)]
         return obs
 
     def create_animation(self, animation_config=None):
@@ -242,19 +241,19 @@ class AnimationMonitor(gym.Wrapper):
         if anim_cfg is None:
             anim_cfg = self.animation_config
 
-        grid: Grid = self.env.grid
+        grid: Grid = self.grid
         cfg = self.svg_settings
         colors = cycle(cfg.colors)
-        agents_colors = {index: next(colors) for index in range(self.grid_cfg.num_agents)}
+        agents_colors = {index: next(colors) for index in range(self.grid_config.num_agents)}
 
         episode_length = len(self.dones_history)
 
         if anim_cfg.egocentric_idx is not None:
-            anim_cfg.egocentric_idx %= self.grid_cfg.num_agents
+            anim_cfg.egocentric_idx %= self.grid_config.num_agents
 
-        if anim_cfg.egocentric_idx is not None and self.grid_cfg.on_target == 'finish':
+        if anim_cfg.egocentric_idx is not None and self.grid_config.on_target == 'finish':
             for step_idx, dones in enumerate(self.dones_history):
-                if dones[anim_cfg.egocentric_idx] and self.grid_cfg.on_target != 'restart':
+                if dones[anim_cfg.egocentric_idx] and self.grid_config.on_target != 'restart':
                     episode_length = min(len(self.dones_history), step_idx + 1)
                     break
         gh = GridHolder(agents_xy=grid.positions_xy, width=len(grid.obstacles), height=len(grid.obstacles[0]),
@@ -339,7 +338,7 @@ class AnimationMonitor(gym.Wrapper):
         cx = cfg.draw_start + y * cfg.scale_size
         cy = cfg.draw_start + (gh.width - x - 1) * cfg.scale_size
 
-        dr = (self.grid_cfg.obs_radius + 1) * cfg.scale_size - cfg.stroke_width * 2
+        dr = (self.grid_config.obs_radius + 1) * cfg.scale_size - cfg.stroke_width * 2
         result = Rectangle(x=cx - dr + cfg.r,
                            y=cy - dr + cfg.r,
                            width=2 * dr - 2 * cfg.r,
@@ -367,7 +366,7 @@ class AnimationMonitor(gym.Wrapper):
         y_path = []
         for agents_xy in gh.agents_xy_history[:gh.episode_length]:
             x, y = agents_xy[agent_idx]
-            dr = (self.grid_cfg.obs_radius + 1) * cfg.scale_size - cfg.stroke_width * 2
+            dr = (self.grid_config.obs_radius + 1) * cfg.scale_size - cfg.stroke_width * 2
             cx = cfg.draw_start + y * cfg.scale_size
             cy = -cfg.draw_start + -(gh.width - x - 1) * cfg.scale_size
             x_path.append(str(cx - dr + cfg.r))
@@ -375,7 +374,7 @@ class AnimationMonitor(gym.Wrapper):
 
         visibility = []
         for dones in gh.agents_done_history[:gh.episode_length]:
-            visibility.append('hidden' if dones[agent_idx] and self.grid_cfg.on_target == 'finish' else "visible")
+            visibility.append('hidden' if dones[agent_idx] and self.grid_config.on_target == 'finish' else "visible")
 
         view.add_animation(self.compressed_anim('x', x_path, cfg.time_scale))
         view.add_animation(self.compressed_anim('y', y_path, cfg.time_scale))
@@ -402,18 +401,18 @@ class AnimationMonitor(gym.Wrapper):
 
                 if egocentric_idx is not None:
                     ego_x, ego_y = agents_xy[egocentric_idx]
-                    if self.check_in_radius(x, y, ego_x, ego_y, self.grid_cfg.obs_radius):
+                    if self.check_in_radius(x, y, ego_x, ego_y, self.grid_config.obs_radius):
                         opacity.append('1.0')
                     else:
                         opacity.append(str(cfg.shaded_opacity))
 
             visibility = []
-            if self.grid_cfg.on_target != 'finish':
-                visibility = ['visible'] * self.grid_cfg.num_agents
+            if self.grid_config.on_target != 'finish':
+                visibility = ['visible'] * self.grid_config.num_agents
             else:
                 for dones in gh.agents_done_history[:gh.episode_length]:
                     visibility.append(
-                        'hidden' if dones[agent_idx] and self.grid_cfg.on_target == 'finish' else "visible")
+                        'hidden' if dones[agent_idx] and self.grid_config.on_target == 'finish' else "visible")
 
             agent.add_animation(self.compressed_anim('cy', y_path, cfg.time_scale))
             agent.add_animation(self.compressed_anim('cx', x_path, cfg.time_scale))
@@ -510,18 +509,18 @@ class AnimationMonitor(gym.Wrapper):
 
                 if ego_idx is not None:
                     ego_x, ego_y = targets_xy[ego_idx]
-                    if self.check_in_radius(x, y, ego_x, ego_y, self.grid_cfg.obs_radius):
+                    if self.check_in_radius(x, y, ego_x, ego_y, self.grid_config.obs_radius):
                         opacity.append('1.0')
                     else:
                         opacity.append(str(cfg.shaded_opacity))
 
             visibility = []
-            if self.grid_cfg.on_target == 'restart':
-                visibility = ['visible'] * self.grid_cfg.num_agents
+            if self.grid_config.on_target == 'restart':
+                visibility = ['visible'] * self.grid_config.num_agents
             else:
                 for dones in gh.agents_done_history[:gh.episode_length]:
                     visibility.append('hidden' if dones[target_idx] else "visible")
-            if self.grid_cfg.on_target == 'restart':
+            if self.grid_config.on_target == 'restart':
                 target.add_animation(self.compressed_anim('cy', y_path, cfg.time_scale))
                 target.add_animation(self.compressed_anim('cx', x_path, cfg.time_scale))
             target.add_animation(self.compressed_anim("visibility", visibility, cfg.time_scale))
@@ -540,7 +539,7 @@ class AnimationMonitor(gym.Wrapper):
         for i in range(gh.height):
             for j in range(gh.width):
                 x, y = self.fix_point(i, j, gh.width)
-                if gh.obstacles[x][y] != self.grid_cfg.FREE:
+                if gh.obstacles[x][y] != self.grid_config.FREE:
                     obs_settings = {}
                     obs_settings.update(x=cfg.draw_start + i * cfg.scale_size - cfg.r,
                                         y=cfg.draw_start + j * cfg.scale_size - cfg.r,
@@ -552,7 +551,7 @@ class AnimationMonitor(gym.Wrapper):
                     if animation_config.egocentric_idx is not None and cfg.egocentric_shaded:
                         initial_positions = gh.agents_xy_history[0] if gh.agents_xy_history else gh.agents_xy
                         ego_x, ego_y = initial_positions[animation_config.egocentric_idx]
-                        if not self.check_in_radius(x, y, ego_x, ego_y, self.grid_cfg.obs_radius):
+                        if not self.check_in_radius(x, y, ego_x, ego_y, self.grid_config.obs_radius):
                             obs_settings.update(opacity=cfg.shaded_opacity)
 
                     result.append(Rectangle(**obs_settings))
@@ -574,13 +573,13 @@ class AnimationMonitor(gym.Wrapper):
         for i in range(gh.height):
             for j in range(gh.width):
                 x, y = self.fix_point(i, j, gh.width)
-                if gh.obstacles[x][y] == self.grid_cfg.FREE:
+                if gh.obstacles[x][y] == self.grid_config.FREE:
                     continue
                 opacity = []
                 seen = set()
                 for step_idx, agents_xy in enumerate(gh.agents_xy_history[:gh.episode_length]):
                     ego_x, ego_y = agents_xy[animation_config.egocentric_idx]
-                    if self.check_in_radius(x, y, ego_x, ego_y, self.grid_cfg.obs_radius):
+                    if self.check_in_radius(x, y, ego_x, ego_y, self.grid_config.obs_radius):
                         seen.add((x, y))
                     if (x, y) in seen:
                         opacity.append(str(1.0))
@@ -615,7 +614,7 @@ class AnimationMonitor(gym.Wrapper):
             ego_idx = animation_config.egocentric_idx
             if ego_idx is not None:
                 ego_x, ego_y = initial_positions[ego_idx]
-                if not self.check_in_radius(x, y, ego_x, ego_y, self.grid_cfg.obs_radius) and cfg.egocentric_shaded:
+                if not self.check_in_radius(x, y, ego_x, ego_y, self.grid_config.obs_radius) and cfg.egocentric_shaded:
                     circle_settings.update(opacity=cfg.shaded_opacity)
                 if ego_idx == idx:
                     circle_settings.update(fill=self.svg_settings.ego_color)

@@ -25,7 +25,7 @@ class AbstractMetric(gym.Wrapper):
         return obs, reward, done, infos
 
 
-class LifeLongSolvedInstancesMetric(AbstractMetric):
+class LifeLongAverageThroughputMetric(AbstractMetric):
 
     def __init__(self, env):
         super().__init__(env)
@@ -36,7 +36,7 @@ class LifeLongSolvedInstancesMetric(AbstractMetric):
             if on_goal:
                 self._solved_instances += 1
         if truncated:
-            result = {'solved_instances': self._solved_instances}
+            result = {'avg_throughput': self._solved_instances / self.grid_config.max_episode_steps}
             self._solved_instances = 0
             return result
 
