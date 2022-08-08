@@ -59,13 +59,13 @@ class NonDisappearEpLengthMetric(AbstractMetric):
 
     def _compute_stats(self, step, is_on_goal, truncated):
         if truncated:
-            return {'ep_length': self._current_step}
+            return {'ep_length': step}
 
 
 class EpLengthMetric(AbstractMetric):
     def __init__(self, env):
         super().__init__(env)
-        self._current_step = 0
+        # self._current_step = 0
         self._solve_time = [None for _ in range(self.get_num_agents())]
 
     def _compute_stats(self, step, is_on_goal, truncated):
@@ -76,9 +76,7 @@ class EpLengthMetric(AbstractMetric):
         if truncated:
             result = {'ep_length': sum(self._solve_time) / self.get_num_agents()}
             self._solve_time = [None for _ in range(self.get_num_agents())]
-            self._current_step = 0
             return result
-        self._current_step += 1
 
 
 class CSRMetric(AbstractMetric):
@@ -89,7 +87,9 @@ class CSRMetric(AbstractMetric):
     def _compute_stats(self, step, is_on_goal, truncated):
         self._solved_instances += sum(is_on_goal)
         if truncated:
-            return {'CSR': float(self._solved_instances == self.get_num_agents())}
+            results = {'CSR': float(self._solved_instances == self.get_num_agents())}
+            self._solved_instances = 0
+            return results
 
 
 class ISRMetric(AbstractMetric):
@@ -100,4 +100,6 @@ class ISRMetric(AbstractMetric):
     def _compute_stats(self, step, is_on_goal, truncated):
         self._solved_instances += sum(is_on_goal)
         if truncated:
-            return {'ISR': self._solved_instances / self.get_num_agents()}
+            results = {'ISR': self._solved_instances / self.get_num_agents()}
+            self._solved_instances = 0
+            return results
