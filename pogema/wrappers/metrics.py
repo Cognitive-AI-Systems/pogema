@@ -65,16 +65,16 @@ class NonDisappearEpLengthMetric(AbstractMetric):
 class EpLengthMetric(AbstractMetric):
     def __init__(self, env):
         super().__init__(env)
-        # self._current_step = 0
         self._solve_time = [None for _ in range(self.get_num_agents())]
 
     def _compute_stats(self, step, is_on_goal, truncated):
         for idx, on_goal in enumerate(is_on_goal):
-            if on_goal or truncated:
-                self._solve_time[idx] = step
+            if self._solve_time[idx] is None:
+                if on_goal or truncated:
+                    self._solve_time[idx] = step
 
         if truncated:
-            result = {'ep_length': sum(self._solve_time) / self.get_num_agents()}
+            result = {'ep_length': sum(self._solve_time) / self.get_num_agents() + 1}
             self._solve_time = [None for _ in range(self.get_num_agents())]
             return result
 
