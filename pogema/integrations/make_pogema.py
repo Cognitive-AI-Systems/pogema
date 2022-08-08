@@ -13,8 +13,8 @@ def _make_sample_factory_integration(grid_config):
     env = _make_pogema(grid_config)
     env = MetricsForwardingWrapper(env)
     env = IsMultiAgentWrapper(env)
-    env = AutoResetWrapper(env)
-
+    if grid_config.auto_reset is None or grid_config.auto_reset:
+        env = AutoResetWrapper(env)
     return env
 
 
@@ -43,6 +43,9 @@ def make_single_agent_gym(grid_config: Union[GridConfig, dict] = GridConfig()):
 def make_pogema(grid_config: Union[GridConfig, dict] = GridConfig(), *args, **kwargs):
     if isinstance(grid_config, dict):
         grid_config = GridConfig(**grid_config)
+
+    if grid_config.integration != 'SampleFactory' and grid_config.auto_reset:
+        raise KeyError(f"{grid_config.integration} does not support auto_reset")
 
     if grid_config.integration is None:
         return _make_pogema(grid_config)
