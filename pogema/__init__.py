@@ -22,25 +22,3 @@ register(
     id="Pogema-v0",
     entry_point="pogema.integrations.make_pogema:make_single_agent_gym",
 )
-
-# def main():
-#     q = _get_num_agents_by_target_density(64, 0.0223, 0.3)
-#     print(_get_target_density_by_num_agents(64, q, 0.3))
-#     print(q)
-
-
-# if __name__ == '__main__':
-#     for env, Easy64x64, Normal64x64, Hard64x64, ExtraHard64x64
-#     main()
-
-# for size, max_episode_steps in zip([8, 16, 32, 64], [64, 128, 256, 512]):
-#     for obstacle_density in [0.3]:
-#         for difficulty, agent_density in zip(['easy', 'normal', 'hard', 'extra-hard'],
-#                                              [0.0223, 0.0446, 0.0892, 0.1784]):
-#             num_agents = _get_num_agents_by_target_density(size, agent_density, obstacle_density)
-#             register(
-#                 id=f'Pogema-{size}x{size}-{difficulty}-v0',
-#                 entry_point="pogema.integrations.make_pogema:make_pogema",
-#                 kwargs={"grid_config": GridConfig(size=size, num_agents=num_agents, density=obstacle_density,
-#                                                   max_episode_steps=max_episode_steps),
-#                         "integration": None})

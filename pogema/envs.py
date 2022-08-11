@@ -34,10 +34,7 @@ class PogemaBase(gym.Env):
     """
     Abstract class of the Pogema environment.
     """
-    metadata = {
-        "render_modes": ["ansi"],
-        # "render_fps": 4,
-    }
+    metadata = {"render_modes": ["ansi"], }
 
     def step(self, action):
         raise NotImplementedError
@@ -198,12 +195,11 @@ class Pogema(PogemaBase):
         targets_xy_relative = self.grid.get_targets_xy_relative()
 
         for agent_idx in range(self.grid_config.num_agents):
-            result = {}
-            result['obstacles'] = self.grid.get_obstacles_for_agent(agent_idx)
+            result = {'obstacles': self.grid.get_obstacles_for_agent(agent_idx),
+                      'agents': self.grid.get_positions(agent_idx),
+                      'xy': agents_xy_relative[agent_idx],
+                      'target_xy': targets_xy_relative[agent_idx]}
 
-            result['agents'] = self.grid.get_positions(agent_idx)
-            result['xy'] = agents_xy_relative[agent_idx]
-            result['target_xy'] = targets_xy_relative[agent_idx]
             results.append(result)
         return results
 
@@ -257,7 +253,8 @@ class Pogema(PogemaBase):
 class PogemaLifeLong(Pogema):
     def __init__(self, grid_config=GridConfig(num_agents=2)):
         super().__init__(grid_config)
-        self.random_generators: list = [np.random.default_rng(grid_config.seed + i) for i in range(grid_config.num_agents)]
+        self.random_generators: list = [np.random.default_rng(grid_config.seed + i) for i in
+                                        range(grid_config.num_agents)]
 
     def _initialize_grid(self):
         self.grid: GridLifeLong = GridLifeLong(grid_config=self.grid_config)

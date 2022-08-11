@@ -50,7 +50,6 @@ class PersistentWrapper(gym.Wrapper):
                 self.grid.finishes_xy[idx] = state.tx, state.ty
 
         return True
-        # self.env.grid.set_activity(agent_idx, a_s[agent_idx][-1].active)
 
     def _get_agent_state(self, grid, agent_idx):
         x, y = grid.positions_xy[agent_idx]
