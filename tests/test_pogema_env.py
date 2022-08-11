@@ -1,6 +1,8 @@
 import re
+import time
 
 import numpy as np
+from tabulate import tabulate
 
 from pogema import pogema_v0
 from pogema import Easy8x8, Normal8x8, Hard8x8, ExtraHard8x8
@@ -208,3 +210,21 @@ def test_persistent_env(num_steps=100):
         if all(done):
             break
     assert np.isclose(first_run_observations, second_run_observations).all()
+
+
+def test_steps_per_second_throughput():
+    table = []
+    for on_target in ['finish', 'nothing', 'restart']:
+        for num_agents in [1, 32, 64]:
+            for size in [32, 64]:
+                gc = GridConfig(obs_radius=5, seed=42, max_episode_steps=1024, )
+                gc.size = size
+                gc.num_agents = num_agents
+                gc.on_target = on_target
+
+                start_time = time.monotonic()
+                run_episode(grid_config=gc)
+                end_time = time.monotonic()
+                steps_per_second = gc.max_episode_steps / (end_time - start_time)
+                table.append([on_target, num_agents, size, steps_per_second * gc.num_agents])
+    print('\n' + tabulate(table, headers=['on_target', 'num_agents', 'size', 'SPS (individual)'], tablefmt='grid'))
