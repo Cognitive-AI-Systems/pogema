@@ -165,10 +165,17 @@ def test_predefined_configurations():
             if re.match(f'^{difficulty}\d+x\d+', make_grid_config_func.__name__):
                 assert np.isclose(get_target_density_by_num_agents(gc.size, gc.num_agents, gc.density), agent_density)
 
+    # checking creation
     for make_grid_config_func in predefined_grids:
         gc = make_grid_config_func(seed=42)
         env = pogema_v0(gc)
         env.reset()
+
+    # checking map_name
+    for make_grid_config_func in predefined_grids:
+        gc = make_grid_config_func(seed=42)
+        assert gc.map_name == make_grid_config_func.__name__
+
 
 
 def test_persistent_env(num_steps=100):
