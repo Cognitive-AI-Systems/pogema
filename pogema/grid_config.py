@@ -143,7 +143,7 @@ class PredefinedDifficultyConfig(GridConfig):
     obs_radius: Literal[5] = 5
     observation_type: Literal['default'] = 'default'
 
-    @validator('density')
+    @validator('density', always=True)
     def density_restrictions(cls, v):
         assert 0.299999 <= v <= 0.3000001, "density for that predefined configuration must be equal to 0.3"
         return v
@@ -153,93 +153,109 @@ class Easy8x8(PredefinedDifficultyConfig):
     size: Literal[8] = 8
     max_episode_steps: Literal[64] = 64
     num_agents: Literal[1] = 1
+    map_name: Literal['Easy8x8'] = 'Easy8x8'
 
 
 class Normal8x8(PredefinedDifficultyConfig):
     size: Literal[8] = 8
     max_episode_steps: Literal[64] = 64
     num_agents: Literal[2] = 2
+    map_name: Literal['Normal8x8'] = 'Normal8x8'
 
 
 class Hard8x8(PredefinedDifficultyConfig):
     size: Literal[8] = 8
     max_episode_steps: Literal[64] = 64
     num_agents: Literal[4] = 4
+    map_name: Literal['Hard8x8'] = 'Hard8x8'
 
 
 class ExtraHard8x8(PredefinedDifficultyConfig):
     size: Literal[8] = 8
     max_episode_steps: Literal[64] = 64
     num_agents: Literal[8] = 8
+    map_name: Literal['ExtraHard8x8'] = 'ExtraHard8x8'
 
 
 class Easy16x16(PredefinedDifficultyConfig):
     size: Literal[16] = 16
     max_episode_steps: Literal[128] = 128
     num_agents: Literal[4] = 4
+    map_name: Literal['Easy16x16'] = 'Easy16x16'
 
 
 class Normal16x16(PredefinedDifficultyConfig):
     size: Literal[16] = 16
     max_episode_steps: Literal[128] = 128
     num_agents: Literal[8] = 8
+    map_name: Literal['Normal16x16'] = 'Normal16x16'
 
 
 class Hard16x16(PredefinedDifficultyConfig):
     size: Literal[16] = 16
     max_episode_steps: Literal[128] = 128
     num_agents: Literal[16] = 16
+    map_name: Literal['Hard16x16'] = 'Hard16x16'
 
 
 class ExtraHard16x16(PredefinedDifficultyConfig):
     size: Literal[16] = 16
     max_episode_steps: Literal[128] = 128
     num_agents: Literal[32] = 32
+    map_name: Literal['ExtraHard16x16'] = 'ExtraHard16x16'
 
 
 class Easy32x32(PredefinedDifficultyConfig):
     size: Literal[32] = 32
     max_episode_steps: Literal[256] = 256
     num_agents: Literal[16] = 16
+    map_name: Literal['Easy32x32'] = 'Easy32x32'
 
 
 class Normal32x32(PredefinedDifficultyConfig):
     size: Literal[32] = 32
     max_episode_steps: Literal[256] = 256
     num_agents: Literal[32] = 32
+    map_name: Literal['Normal32x32'] = 'Normal32x32'
 
 
 class Hard32x32(PredefinedDifficultyConfig):
     size: Literal[32] = 32
     max_episode_steps: Literal[256] = 256
     num_agents: Literal[64] = 64
+    map_name: Literal['Hard32x32'] = 'Hard32x32'
 
 
 class ExtraHard32x32(PredefinedDifficultyConfig):
     size: Literal[32] = 32
     max_episode_steps: Literal[256] = 256
     num_agents: Literal[128] = 128
+    map_name: Literal['ExtraHard32x32'] = 'ExtraHard32x32'
 
 
 class Easy64x64(PredefinedDifficultyConfig):
     size: Literal[32] = 64
     max_episode_steps: Literal[512] = 512
     num_agents: Literal[16] = 64
+    map_name: Literal['Easy64x64'] = 'Easy64x64'
 
 
 class Normal64x64(PredefinedDifficultyConfig):
     size: Literal[32] = 64
     max_episode_steps: Literal[512] = 512
     num_agents: Literal[16] = 128
+    map_name: Literal['Normal64x64'] = 'Normal64x64'
 
 
 class Hard64x64(PredefinedDifficultyConfig):
     size: Literal[32] = 64
     max_episode_steps: Literal[512] = 512
     num_agents: Literal[16] = 256
+    map_name: Literal['Hard64x64'] = 'Hard64x64'
 
 
 class ExtraHard64x64(PredefinedDifficultyConfig):
     size: Literal[32] = 64
     max_episode_steps: Literal[512] = 512
     num_agents: Literal[16] = 512
+    map_name: Literal['ExtraHard64x64'] = 'ExtraHard64x64'
