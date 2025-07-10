@@ -1,5 +1,5 @@
 numpy>=1.19.2,<=1.23.5
-pydantic>=1.8.2,<=1.9.1
+pydantic>=2.0
 pytest>=6.2.5,<=7.1.2
 pettingzoo==1.22.3
 tabulate>=0.8.7,<=0.8.10

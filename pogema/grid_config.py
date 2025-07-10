@@ -1,13 +1,20 @@
 import sys
 from typing import Optional, Union
 from pydantic import validator, root_validator
+from pydantic import BaseModel, model_validator
 
 from pogema.utils import CommonSettings
 
 from typing_extensions import Literal
 
+import sys
+from typing import Optional, Union
+from pydantic import validator, model_validator
+from pogema.utils import CommonSettings
+from typing_extensions import Literal
 
-class GridConfig(CommonSettings, ):
+
+class GridConfig(CommonSettings):
     on_target: Literal['finish', 'nothing', 'restart'] = 'finish'
     seed: Optional[int] = None
     width: Optional[int] = None
@@ -24,52 +31,69 @@ class GridConfig(CommonSettings, ):
     persistent: bool = False
     observation_type: Literal['POMAPF', 'MAPF', 'default'] = 'default'
     map: Optional[Union[list, str]] = None
-
     map_name: Optional[str] = None
-
-    integration: Literal['SampleFactory', 'PyMARL', 'rllib', 'gymnasium', 'PettingZoo'] = None
+    integration: Optional[Literal['SampleFactory', 'PyMARL', 'rllib', 'gymnasium', 'PettingZoo']] = None
     max_episode_steps: int = 64
     auto_reset: Optional[bool] = None
 
-    @root_validator
-    def validate_dimensions_and_positions(cls, values):
-        width_provided = values.get('width') is not None
-        height_provided = values.get('height') is not None
-        
+    @model_validator(mode='after')
+    def validate_dimensions_and_positions(cls, model):
+        # Use getattr for safe access, with default fallback
+        width = getattr(model, 'width', None)
+        height = getattr(model, 'height', None)
+        size = getattr(model, 'size', 8)
+
+        width_provided = width is not None and width > 0
+        height_provided = height is not None and height > 0
+
         if width_provided and not height_provided:
-            raise ValueError("Invalid dimension configuration. Please provide height.")
-        elif not width_provided and height_provided:
-            raise ValueError("Invalid dimension configuration. Please provide width.")
-        
+            raise ValueError("Invalid dimension configuration: width provided but height missing.")
+        if height_provided and not width_provided:
+            raise ValueError("Invalid dimension configuration: height provided but width missing.")
+
         if not width_provided and not height_provided:
-            values['width'] = values.get('size', 8)
-            values['height'] = values.get('size', 8)
-        if 'size' not in values or values.get('size') != max(values.get('width'), values.get('height')):
-            values['size'] = max(values.get('width'), values.get('height'))
-        
+            fallback_size = size if size >= 2 else 8
+            width = fallback_size
+            height = fallback_size
 
-        width = values.get('width')
-        height = values.get('height')
-        
-        if width is not None and height is not None:
-            agents_xy = values.get('agents_xy')
-            if agents_xy is not None:
-                cls.check_positions(agents_xy, width, height)
+        if width <= 0:
+            width = 8
+        if height <= 0:
+            height = 8
 
-            targets_xy = values.get('targets_xy')
-            if targets_xy is not None:
-                first_element = targets_xy[0]
-                if isinstance(first_element[0], (list, tuple)):
-                    for agent_goals in targets_xy:
-                        cls.check_positions(agent_goals, width, height)
-                else:
-                    cls.check_positions(targets_xy, width, height)
-        
-        return values
+        size = max(width, height, 2)
+
+        setattr(model, 'width', width)
+        setattr(model, 'height', height)
+        setattr(model, 'size', size)
+
+        if not (1 <= width <= 4096):
+            raise ValueError(f"width must be in [1, 4096], got {width}")
+        if not (1 <= height <= 4096):
+            raise ValueError(f"height must be in [1, 4096], got {height}")
+        if not (2 <= size <= 4096):
+            raise ValueError(f"size must be in [2, 4096], got {size}")
+
+        # Validate positions
+        agents_xy = getattr(model, 'agents_xy', None)
+        targets_xy = getattr(model, 'targets_xy', None)
+
+        if agents_xy is not None:
+            cls.check_positions(agents_xy, width, height)
+
+        if targets_xy is not None:
+            first_element = targets_xy[0]
+            if isinstance(first_element[0], (list, tuple)):
+                for agent_goals in targets_xy:
+                    cls.check_positions(agent_goals, width, height)
+            else:
+                cls.check_positions(targets_xy, width, height)
+
+        return model
 
     @validator('seed')
     def seed_initialization(cls, v):
-        assert v is None or (0 <= v < sys.maxsize), "seed must be in [0, " + str(sys.maxsize) + ']'
+        assert v is None or (0 <= v < sys.maxsize), f"seed must be in [0, {sys.maxsize}]"
         return v
 
     @staticmethod
@@ -99,7 +123,7 @@ class GridConfig(CommonSettings, ):
         return v
 
     @validator('agents_xy')
-    def agents_xy_validation(cls, v, values):
+    def agents_xy_validation(cls, v):
         if v is not None:
             if not isinstance(v, (list, tuple)):
                 raise ValueError("agents_xy must be a list")
@@ -115,11 +139,11 @@ class GridConfig(CommonSettings, ):
         if v is not None:
             if not v or not isinstance(v, (list, tuple)):
                 raise ValueError("targets_xy must be a list")
-            
+
             first_element = v[0]
             if not isinstance(first_element, (list, tuple)):
                 raise ValueError("Invalid targets_xy format")
-            
+
             if isinstance(first_element[0], (list, tuple)):
                 for agent_goals in v:
                     if not isinstance(agent_goals, (list, tuple)) or len(agent_goals) < 2:
@@ -132,13 +156,29 @@ class GridConfig(CommonSettings, ):
             else:
                 on_target = values.get('on_target', 'finish')
                 if on_target == 'restart':
-                    raise ValueError("on_target='restart' requires goal sequences, not single goals. Use format: targets_xy: [[[x1,y1],[x2,y2]], [[x3,y3],[x4,y4]]]")
+                    raise ValueError(
+                        "on_target='restart' requires goal sequences, not single goals. "
+                        "Use format: targets_xy: [[[x1,y1],[x2,y2]], [[x3,y3],[x4,y4]]]"
+                    )
                 for position in v:
                     if not isinstance(position, (list, tuple)) or len(position) != 2:
                         raise ValueError("Position must be a list/tuple of length 2")
                     if not all(isinstance(coord, int) for coord in position):
                         raise ValueError("Position coordinates must be integers")
         return v
+
+    @staticmethod
+    def check_positions(v, width, height):
+        for position in v:
+            if not isinstance(position, (list, tuple)) or len(position) != 2:
+                raise ValueError("Position must be a list/tuple of length 2")
+            x, y = position
+            if not isinstance(x, int) or not isinstance(y, int):
+                raise ValueError("Position coordinates must be integers")
+            if not (0 <= x < height and 0 <= y < width):
+                raise IndexError(
+                    f"Position is out of bounds! {position} is not in [{0}, {height}] x [{0}, {width}]"
+                )
 
     @staticmethod
     def check_positions(v, width, height):
@@ -188,14 +228,14 @@ class GridConfig(CommonSettings, ):
                     'targets_xy') is None) and possible_agents_xy and possible_targets_xy:
                 values['possible_agents_xy'] = possible_agents_xy
                 values['possible_targets_xy'] = possible_targets_xy
-        
+
         height = len(v)
         width = 0
         area = 0
         for line in v:
             width = max(width, len(line))
             area += len(line)
-        
+
         values['size'] = max(width, height)
         values['width'] = width
         values['height'] = height
@@ -203,13 +243,13 @@ class GridConfig(CommonSettings, ):
 
         return v
 
-    @validator('possible_agents_xy')
-    def possible_agents_xy_validation(cls, v):
-        return v
-
-    @validator('possible_targets_xy')
-    def possible_targets_xy_validation(cls, v):
-        return v
+    # @validator('possible_agents_xy')
+    # def possible_agents_xy_validation(cls, v):
+    #     return v
+    #
+    # @validator('possible_targets_xy')
+    # def possible_targets_xy_validation(cls, v):
+    #     return v
 
     @staticmethod
     def str_map_to_list(str_map, free, obstacle):
@@ -266,7 +306,7 @@ class GridConfig(CommonSettings, ):
 
     def update_config(self, **kwargs):
         current_values = self.dict()
-        
+
         if 'size' in kwargs:
             current_values.pop('width', None)
             current_values.pop('height', None)
@@ -274,6 +314,6 @@ class GridConfig(CommonSettings, ):
             current_values.pop('size', None)
         current_values.update(kwargs)
         new_instance = GridConfig(**current_values)
-        
+
         for field_name, field_value in new_instance.__dict__.items():
             setattr(self, field_name, field_value)
