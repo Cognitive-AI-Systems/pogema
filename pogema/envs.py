@@ -369,7 +369,7 @@ class PogemaLifeLong(Pogema):
         if self.has_custom_sequences:
             agent_targets = self.grid_config.targets_xy[agent_idx]
             current_idx = self.current_goal_indices[agent_idx]
-            next_target = agent_targets[current_idx]
+            next_target = agent_targets[(current_idx + 1) % len(agent_targets)]
             
             self.current_goal_indices[agent_idx] = (current_idx + 1) % len(agent_targets)
             

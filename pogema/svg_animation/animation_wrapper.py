@@ -95,7 +95,10 @@ class AnimationMonitor(Wrapper):
         :return: None
         """
         wr = self._working_radius
-        obstacles = self.env.get_obstacles(ignore_borders=False)[wr:-wr, wr:-wr]
+        if wr > 0:
+            obstacles = self.env.get_obstacles(ignore_borders=False)[wr:-wr, wr:-wr]
+        else:
+            obstacles = self.env.get_obstacles(ignore_borders=False)
         history: list[list[AgentState]] = self.env.decompress_history(self.history)
 
         svg_settings = SvgSettings()
