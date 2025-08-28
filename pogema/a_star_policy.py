@@ -8,7 +8,7 @@ INF = 1e7
 
 class GridMemory:
     def __init__(self, start_r=64):
-        self._memory = np.zeros(shape=(start_r * 2 + 1, start_r * 2 + 1), dtype=np.bool_)
+        self._memory = np.zeros(shape=(start_r * 2 + 1, start_r * 2 + 1), dtype=bool)
 
     @staticmethod
     def _try_to_insert(x, y, source, target):
