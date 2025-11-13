@@ -40,7 +40,7 @@ setup(
     url='https://github.com/AIRI-Institute/pogema',
     install_requires=[
         "gymnasium==0.28.1",
-        "numpy>=1.19.2,<=1.23.5",
+        "numpy>1.23.5,<=1.26.4",
         "pydantic>=1.8.2,<=1.9.1",
     ],
     extras_require={
