@@ -135,7 +135,7 @@ class AgentsDensityWrapper(Wrapper):
     def count_agents(self, observations):
         avg_agents_density = []
         for obs in observations:
-            traversable_cells = np.size(obs['obstacles']) - np.count_nonzero(obs['obstacles'])
+            traversable_cells = np.size(obs['global_obstacles']) - np.count_nonzero(obs['global_obstacles'])
             avg_agents_density.append(np.count_nonzero(obs['agents']) / traversable_cells)
         self._avg_agents_density.append(np.mean(avg_agents_density))
 
