@@ -115,11 +115,12 @@ class AnimationDrawer:
         targets = []
 
         if gh.config.static and gh.config.frame_idx is not None:
-            gh.history = [[agent_states[gh.config.frame_idx]] for agent_states in gh.history]
+            self.create_frame_view(gh)
+
         if gh.config.show_agents:
             agents = self.create_agents(gh)
             targets = self.create_targets(gh)
-			
+
             if not gh.config.static:
                 self.animate_agents(agents, gh)
                 self.animate_targets(targets, gh)
@@ -145,6 +146,7 @@ class AnimationDrawer:
     @staticmethod
     def check_in_radius(x1, y1, x2, y2, r) -> bool:
         return x2 - r <= x1 <= x2 + r and y2 - r <= y1 <= y2 + r
+    
     @staticmethod
     def create_grid_lines(grid_holder: GridHolder, render_width, render_height):
         gh = grid_holder
@@ -178,6 +180,11 @@ class AnimationDrawer:
         )
 
         return result
+        
+    def create_frame_view(self, grid_holder):
+        gh: GridHolder = grid_holder
+        frame_idx = gh.config.frame_idx
+        gh.history = [[agent_states[gh.config.frame_idx]] for agent_states in gh.history]
 
     def animate_field_of_view(self, view, grid_holder):
         gh: GridHolder = grid_holder
