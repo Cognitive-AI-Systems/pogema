@@ -12,6 +12,7 @@ class AnimationConfig:
     static: bool = False
     show_agents: bool = True
     egocentric_idx: typing.Optional[int] = None
+    frame_idx: typing.Optional[int] = None
     uid: typing.Optional[str] = None
     save_every_idx_episode: typing.Optional[int] = 1
     show_grid_lines: bool = True
@@ -113,10 +114,12 @@ class AnimationDrawer:
         agents = []
         targets = []
 
+        if gh.config.static and gh.config.frame_idx is not None:
+            gh.history = [[agent_states[gh.config.frame_idx]] for agent_states in gh.history]
         if gh.config.show_agents:
             agents = self.create_agents(gh)
             targets = self.create_targets(gh)
-
+			
             if not gh.config.static:
                 self.animate_agents(agents, gh)
                 self.animate_targets(targets, gh)
@@ -126,7 +129,6 @@ class AnimationDrawer:
                 drawing.add_element(line)
         for obj in [*obstacles, *agents, *targets]:
             drawing.add_element(obj)
-
         if gh.config.egocentric_idx is not None:
             field_of_view = self.create_field_of_view(grid_holder=gh)
             if not gh.config.static:
@@ -143,7 +145,6 @@ class AnimationDrawer:
     @staticmethod
     def check_in_radius(x1, y1, x2, y2, r) -> bool:
         return x2 - r <= x1 <= x2 + r and y2 - r <= y1 <= y2 + r
-
     @staticmethod
     def create_grid_lines(grid_holder: GridHolder, render_width, render_height):
         gh = grid_holder
