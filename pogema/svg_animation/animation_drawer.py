@@ -9,10 +9,9 @@ from pogema.svg_animation.svg_objects import Line, RectangleHref, Animation, Cir
 @dataclass
 class AnimationConfig:
     directory: str = 'renders/'
-    static: bool = False
     show_agents: bool = True
     egocentric_idx: typing.Optional[int] = None
-    frame_idx: typing.Optional[int] = None
+    static_frame_idx: typing.Optional[int] = None
     uid: typing.Optional[str] = None
     save_every_idx_episode: typing.Optional[int] = 1
     show_grid_lines: bool = True
@@ -117,7 +116,7 @@ class AnimationDrawer:
         if gh.config.show_agents:
             agents = self.create_agents(gh)
             targets = self.create_targets(gh)
-            if gh.config.static:
+            if gh.config.static_frame_idx is not None:
                 agents = self.create_static_agents(gh)
                 if gh.config.egocentric_idx is not None:
                     obstacles = self.create_static_obstacles(obstacles= obstacles, grid_holder=gh)
@@ -135,7 +134,7 @@ class AnimationDrawer:
 
         if gh.config.egocentric_idx is not None:
             field_of_view = self.create_field_of_view(grid_holder=gh)
-            if not gh.config.static:
+            if gh.config.static_frame_idx is None:
                 self.animate_obstacles(obstacles=obstacles, grid_holder=gh)
                 self.animate_field_of_view(field_of_view, gh)
             drawing.add_element(field_of_view)
@@ -186,8 +185,8 @@ class AnimationDrawer:
         
     def create_frame_view(self, grid_holder):
         gh: GridHolder = grid_holder
-        frame_idx = gh.config.frame_idx
-        gh.history = [[agent_states[gh.config.frame_idx]] for agent_states in gh.history]
+        frame_idx = gh.config.static_frame_idx
+        gh.history = [[agent_states[frame_idx]] for agent_states in gh.history]
 
     def animate_field_of_view(self, view, grid_holder):
         gh: GridHolder = grid_holder
@@ -329,7 +328,7 @@ class AnimationDrawer:
 
     def create_static_obstacles(self, obstacles, grid_holder):
         gh: GridHolder = grid_holder
-        frame_idx = gh.config.frame_idx
+        frame_idx = gh.config.static_frame_idx
         result = []
         seen = set()
 
@@ -415,7 +414,7 @@ class AnimationDrawer:
         agents = []
         gh: GridHolder = grid_holder
         ego_idx = grid_holder.config.egocentric_idx
-        frame_idx = grid_holder.config.frame_idx
+        frame_idx = grid_holder.config.static_frame_idx
         
         static_positions = [state[frame_idx].get_xy() for state in grid_holder.history]
         for idx, (x, y) in enumerate(static_positions):
