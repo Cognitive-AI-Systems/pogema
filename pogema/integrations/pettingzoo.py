@@ -42,7 +42,8 @@ class PogemaParallel:
         self.agents = self.possible_agents[:]
         self.num_moves = 0
         observations = {agent: observations[self.agent_name_mapping[agent]].astype(np.float32) for agent in self.agents}
-        return observations
+        info = {agent_name: agent_info for agent_name, agent_info in zip(self.agents, info)}
+        return observations, info
 
     def step(self, actions):
         anm = self.agent_name_mapping
