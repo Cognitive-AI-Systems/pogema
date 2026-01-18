@@ -37,7 +37,7 @@ setup(
     description='Partially Observable Grid Environment for Multiple Agents',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/AIRI-Institute/pogema',
+    url='https://github.com/Cognitive-AI-Systems/pogema',
     install_requires=[
         "gymnasium==0.28.1",
         "numpy>1.23.5,<=1.26.4",
@@ -49,5 +49,5 @@ setup(
     package_dir={'': './'},
     packages=find_packages(where='./', include='pogema*'),
     include_package_data=True,
-    python_requires='>=3.7',
+    python_requires=">=3.8,<3.13"
 )
