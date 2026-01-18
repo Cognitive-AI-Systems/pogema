@@ -1,6 +1,6 @@
 numpy>1.23.5,<=1.26.4
 pydantic>=1.8.2,<=1.9.1
 pytest>=6.2.5,<=7.1.2
-pettingzoo==1.22.3
+pettingzoo==1.23.1
 tabulate>=0.8.7,<=0.8.10
 gymnasium==0.28.1
