@@ -155,11 +155,11 @@ class AnimationDrawer:
         offset = 0
         stroke_settings = {'class': 'line'}
         grid_lines = []
-        for i in range(-1, grid_holder.height + 1):
+        for i in range(0, grid_holder.height + 1):
             x = i * gh.svg_settings.scale_size + gh.svg_settings.scale_size / 2
             grid_lines.append(Line(x1=x, y1=offset, x2=x, y2=render_height - offset, **stroke_settings))
 
-        for i in range(-1, grid_holder.width + 1):
+        for i in range(0, grid_holder.width + 1):
             y = i * gh.svg_settings.scale_size + gh.svg_settings.scale_size / 2
             grid_lines.append(Line(x1=offset, y1=y, x2=render_width - offset, y2=y, **stroke_settings))
 
