@@ -99,7 +99,7 @@ class AStarAgent:
         self._rnd = np.random.default_rng(seed)
 
     def act(self, obs):
-        xy, target_xy, obstacles, agents = obs['xy'], obs['target_xy'], obs['obstacles'], obs['agents']
+        xy, target_xy, obstacles, _ = obs['xy'], obs['target_xy'], obs['obstacles'], obs['agents']
 
 
         if self._saved_xy is not None and h(self._saved_xy, xy) > 1:

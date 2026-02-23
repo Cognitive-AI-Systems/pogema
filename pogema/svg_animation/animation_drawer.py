@@ -84,7 +84,8 @@ class Drawing:
              width="{scaled_width}" height="{scaled_height}" viewBox="{" ".join(map(str, view_box))}">'''
 
         definitions = f'''
-        <rect id="obstacle" width="{self.svg_settings.r * 2}" height="{self.svg_settings.r * 2}" fill="{self.svg_settings.obstacle_color}" rx="{self.svg_settings.rx}"/>
+        <rect id="obstacle" width="{self.svg_settings.r * 2}" height="{self.svg_settings.r * 2}" 
+            fill="{self.svg_settings.obstacle_color}" rx="{self.svg_settings.rx}"/>
         <style>
         .line {{stroke: {self.svg_settings.obstacle_color}; stroke-width: {self.svg_settings.stroke_width};}}
         .agent {{r: {self.svg_settings.r};}}
