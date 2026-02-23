@@ -1,8 +1,6 @@
-import re
 import time
 
 import numpy as np
-import pytest
 from tabulate import tabulate
 
 from pogema import pogema_v0, AnimationMonitor
@@ -122,7 +120,7 @@ def test_gym_pogema_animation():
                                                 on_target='finish'))
     env = AnimationMonitor(env)
     env.reset()
-    done = False
+
     while True:
         _, _, terminated, truncated, _ = env.step(env.action_space.sample())
         if terminated or truncated:

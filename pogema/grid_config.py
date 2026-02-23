@@ -1,15 +1,6 @@
 import sys
 from typing import Optional, Union
-from pydantic import validator, root_validator
-from pydantic import BaseModel, model_validator
-
-from pogema.utils import CommonSettings
-
-from typing_extensions import Literal
-
-import sys
-from typing import Optional, Union
-from pydantic import validator, model_validator
+from pydantic import field_validator, model_validator
 from pogema.utils import CommonSettings
 from typing_extensions import Literal
 
@@ -36,12 +27,62 @@ class GridConfig(CommonSettings):
     max_episode_steps: int = 64
     auto_reset: Optional[bool] = None
 
+    @model_validator(mode='before')
+    @classmethod
+    def process_map_and_defaults(cls, data):
+        if isinstance(data, dict):
+            # Process string map into list and extract agents/targets
+            map_val = data.get('map')
+            if map_val is not None and isinstance(map_val, str):
+                free = CommonSettings().FREE
+                obstacle = CommonSettings().OBSTACLE
+                map_val, agents_xy, targets_xy, possible_agents_xy, possible_targets_xy = cls.str_map_to_list(
+                    map_val, free, obstacle
+                )
+                if agents_xy and targets_xy and data.get('agents_xy') is not None and data.get(
+                        'targets_xy') is not None:
+                    raise KeyError("""Can't create task. Please provide agents_xy and targets_xy only once.
+                Either with parameters or with a map.""")
+                if (agents_xy or targets_xy) and (possible_agents_xy or possible_targets_xy):
+                    raise KeyError("""Can't create task. Mark either possible locations or precise ones.""")
+                elif agents_xy and targets_xy:
+                    data['agents_xy'] = agents_xy
+                    data['targets_xy'] = targets_xy
+                    data['num_agents'] = len(agents_xy)
+                elif (data.get('agents_xy') is None or data.get(
+                        'targets_xy') is None) and possible_agents_xy and possible_targets_xy:
+                    data['possible_agents_xy'] = possible_agents_xy
+                    data['possible_targets_xy'] = possible_targets_xy
+
+                data['map'] = map_val
+
+            # Compute map-derived dimensions
+            if map_val is not None and not isinstance(map_val, str):
+                height = len(map_val)
+                width = 0
+                area = 0
+                for line in map_val:
+                    width = max(width, len(line))
+                    area += len(line)
+                data['size'] = max(width, height)
+                data['width'] = width
+                data['height'] = height
+                data['density'] = sum([sum(line) for line in map_val]) / area
+
+            # Default num_agents
+            if data.get('num_agents') is None:
+                if data.get('agents_xy'):
+                    data['num_agents'] = len(data['agents_xy'])
+                else:
+                    data['num_agents'] = 1
+
+        return data
+
     @model_validator(mode='after')
-    def validate_dimensions_and_positions(cls, model):
-        # Use getattr for safe access, with default fallback
-        width = getattr(model, 'width', None)
-        height = getattr(model, 'height', None)
-        size = getattr(model, 'size', 8)
+    def validate_dimensions_and_positions(self):
+        width = self.width
+        height = self.height
+        size = self.size
 
         width_provided = width is not None and width > 0
         height_provided = height is not None and height > 0
@@ -63,9 +104,9 @@ class GridConfig(CommonSettings):
 
         size = max(width, height, 2)
 
-        setattr(model, 'width', width)
-        setattr(model, 'height', height)
-        setattr(model, 'size', size)
+        self.width = width
+        self.height = height
+        self.size = size
 
         if not (1 <= width <= 4096):
             raise ValueError(f"width must be in [1, 4096], got {width}")
@@ -75,23 +116,24 @@ class GridConfig(CommonSettings):
             raise ValueError(f"size must be in [2, 4096], got {size}")
 
         # Validate positions
-        agents_xy = getattr(model, 'agents_xy', None)
-        targets_xy = getattr(model, 'targets_xy', None)
+        agents_xy = self.agents_xy
+        targets_xy = self.targets_xy
 
         if agents_xy is not None:
-            cls.check_positions(agents_xy, width, height)
+            self.check_positions(agents_xy, width, height)
 
         if targets_xy is not None:
             first_element = targets_xy[0]
             if isinstance(first_element[0], (list, tuple)):
                 for agent_goals in targets_xy:
-                    cls.check_positions(agent_goals, width, height)
+                    self.check_positions(agent_goals, width, height)
             else:
-                cls.check_positions(targets_xy, width, height)
+                self.check_positions(targets_xy, width, height)
 
-        return model
+        return self
 
-    @validator('seed')
+    @field_validator('seed')
+    @classmethod
     def seed_initialization(cls, v):
         assert v is None or (0 <= v < sys.maxsize), f"seed must be in [0, {sys.maxsize}]"
         return v
@@ -105,24 +147,29 @@ class GridConfig(CommonSettings):
                 assert 1 <= v <= 4096, f"{field_name} must be in [1, 4096]"
         return v
 
-    @validator('size')
+    @field_validator('size')
+    @classmethod
     def size_restrictions(cls, v):
         return cls._validate_dimension(v, 'size')
 
-    @validator('width')
+    @field_validator('width')
+    @classmethod
     def width_restrictions(cls, v):
         return cls._validate_dimension(v, 'width')
 
-    @validator('height')
+    @field_validator('height')
+    @classmethod
     def height_restrictions(cls, v):
         return cls._validate_dimension(v, 'height')
 
-    @validator('density')
+    @field_validator('density')
+    @classmethod
     def density_restrictions(cls, v):
         assert 0.0 <= v <= 1, "density must be in [0, 1]"
         return v
 
-    @validator('agents_xy')
+    @field_validator('agents_xy')
+    @classmethod
     def agents_xy_validation(cls, v):
         if v is not None:
             if not isinstance(v, (list, tuple)):
@@ -134,8 +181,9 @@ class GridConfig(CommonSettings):
                     raise ValueError("Position coordinates must be integers")
         return v
 
-    @validator('targets_xy')
-    def targets_xy_validation(cls, v, values):
+    @field_validator('targets_xy')
+    @classmethod
+    def targets_xy_validation(cls, v, info):
         if v is not None:
             if not v or not isinstance(v, (list, tuple)):
                 raise ValueError("targets_xy must be a list")
@@ -154,7 +202,7 @@ class GridConfig(CommonSettings):
                         if not all(isinstance(coord, int) for coord in position):
                             raise ValueError("Position coordinates must be integers")
             else:
-                on_target = values.get('on_target', 'finish')
+                on_target = info.data.get('on_target', 'finish')
                 if on_target == 'restart':
                     raise ValueError(
                         "on_target='restart' requires goal sequences, not single goals. "
@@ -178,65 +226,26 @@ class GridConfig(CommonSettings):
             if not (0 <= x < height and 0 <= y < width):
                 raise IndexError(f"Position is out of bounds! {position} is not in [{0}, {height}] x [{0}, {width}]")
 
-
-    @validator('num_agents', always=True)
-    def num_agents_must_be_positive(cls, v, values):
-        if v is None:
-            if values['agents_xy']:
-                v = len(values['agents_xy'])
-            else:
-                v = 1
+    @field_validator('num_agents')
+    @classmethod
+    def num_agents_must_be_positive(cls, v):
         assert 1 <= v <= 10000000, "num_agents must be in [1, 10000000]"
         return v
 
-    @validator('obs_radius')
+    @field_validator('obs_radius')
+    @classmethod
     def obs_radius_must_be_positive(cls, v):
         assert 1 <= v <= 128, "obs_radius must be in [1, 128]"
         return v
 
-    @validator('map', always=True)
-    def map_validation(cls, v, values):
+    @field_validator('map')
+    @classmethod
+    def map_validation(cls, v):
         if v is None:
             return None
-        if isinstance(v, str):
-            v, agents_xy, targets_xy, possible_agents_xy, possible_targets_xy = cls.str_map_to_list(v, values['FREE'],
-                                                                                                    values['OBSTACLE'])
-            if agents_xy and targets_xy and values.get('agents_xy') is not None and values.get(
-                    'targets_xy') is not None:
-                raise KeyError("""Can't create task. Please provide agents_xy and targets_xy only once.
-                Either with parameters or with a map.""")
-            if (agents_xy or targets_xy) and (possible_agents_xy or possible_targets_xy):
-                raise KeyError("""Can't create task. Mark either possible locations or precise ones.""")
-            elif agents_xy and targets_xy:
-                values['agents_xy'] = agents_xy
-                values['targets_xy'] = targets_xy
-                values['num_agents'] = len(agents_xy)
-            elif (values.get('agents_xy') is None or values.get(
-                    'targets_xy') is None) and possible_agents_xy and possible_targets_xy:
-                values['possible_agents_xy'] = possible_agents_xy
-                values['possible_targets_xy'] = possible_targets_xy
-
-        height = len(v)
-        width = 0
-        area = 0
-        for line in v:
-            width = max(width, len(line))
-            area += len(line)
-
-        values['size'] = max(width, height)
-        values['width'] = width
-        values['height'] = height
-        values['density'] = sum([sum(line) for line in v]) / area
-
+        # String maps are already processed in model_validator(mode='before')
+        # At this point v should be a list
         return v
-
-    # @validator('possible_agents_xy')
-    # def possible_agents_xy_validation(cls, v):
-    #     return v
-    #
-    # @validator('possible_targets_xy')
-    # def possible_targets_xy_validation(cls, v):
-    #     return v
 
     @staticmethod
     def str_map_to_list(str_map, free, obstacle):
@@ -292,7 +301,7 @@ class GridConfig(CommonSettings):
         return obstacles, agents_xy, targets_xy, possible_agents_xy, possible_targets_xy
 
     def update_config(self, **kwargs):
-        current_values = self.dict()
+        current_values = self.model_dump()
 
         if 'size' in kwargs:
             current_values.pop('width', None)

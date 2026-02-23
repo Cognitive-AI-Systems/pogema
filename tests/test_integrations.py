@@ -28,8 +28,7 @@ def test_sample_factory_integration():
 
     # testing auto-reset wrapper
     for _ in range(2):
-        dones = [False]
-        infos = None
+
         while True:
             _, _, terminated, truncated, infos = env.step(env.unwrapped.sample_actions())
             if all(terminated) or all(truncated):
@@ -101,8 +100,7 @@ def test_single_agent_gym_integration():
 
 
 def test_petting_zoo():
-    from pettingzoo.test import api_test, parallel_api_test, render_test
-    # from pettingzoo.test import render_test
+    from pettingzoo.test import api_test, parallel_api_test
 
     gc = GridConfig(num_agents=16, size=16, integration='PettingZoo')
 
@@ -115,7 +113,5 @@ def test_petting_zoo():
             return parallel_to_aec(pogema_v0(grid_config))
 
         api_test(env(gc), num_cycles=1000, verbose_progress=True)
-        # todo fix this
-        # render_test(lambda: pogema_v0(gc))
     except ImportError:
         pass

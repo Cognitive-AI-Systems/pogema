@@ -412,21 +412,21 @@ def test_pogema_lifelong_with_sequences():
     )
     
     env = PogemaLifeLong(grid_config=config)
-    obs = env.reset()
+    env.reset()
     
-    assert env.has_custom_sequences == True
+    assert env.has_custom_sequences is True
     assert np.isclose(env.current_goal_indices, [0, 0]).all()
     
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         
-        target1 = env._generate_new_target(0)
+        env._generate_new_target(0)
         assert np.isclose(env.current_goal_indices[0], 1)
         
-        target2 = env._generate_new_target(0)
+        env._generate_new_target(0)
         assert np.isclose(env.current_goal_indices[0], 2)
         
-        target3 = env._generate_new_target(0)
+        env._generate_new_target(0)
         assert np.isclose(env.current_goal_indices[0], 0)
         
         cycling_warnings = [warning for warning in w if "completed all 3 provided targets" in str(warning.message)]
@@ -477,9 +477,9 @@ def test_pogema_lifelong_without_sequences():
     )
     
     env = PogemaLifeLong(grid_config=config)
-    obs = env.reset()
+    env.reset()
     
-    assert env.has_custom_sequences == False
+    assert env.has_custom_sequences is False
     
     target = env._generate_new_target(0)
     assert isinstance(target, tuple)
