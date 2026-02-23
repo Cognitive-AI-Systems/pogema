@@ -23,15 +23,15 @@ def test_sample_factory_integration():
     env = pogema_v0(GridConfig(seed=7, num_agents=4, size=12, integration='SampleFactory'))
     env.reset()
 
-    assert env.num_agents == 4
-    assert env.is_multiagent is True
+    assert env.unwrapped.get_num_agents() == 4
+    assert env.env.is_multiagent is True
 
     # testing auto-reset wrapper
     for _ in range(2):
         dones = [False]
         infos = None
         while True:
-            _, _, terminated, truncated, infos = env.step(env.sample_actions())
+            _, _, terminated, truncated, infos = env.step(env.unwrapped.sample_actions())
             if all(terminated) or all(truncated):
                 break
 

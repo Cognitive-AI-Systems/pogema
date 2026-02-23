@@ -60,7 +60,7 @@ def run_episode(grid_config=None, env=None):
 
     results = [[obs, rewards, terminated, truncated, infos]]
     while True:
-        results.append(env.step(env.sample_actions()))
+        results.append(env.step(env.unwrapped.sample_actions()))
         terminated, truncated = results[-1][2], results[-1][3]
         if all(terminated) or all(truncated):
             break
@@ -182,8 +182,8 @@ def test_custom_positions_and_num_agents():
         gc.num_agents = num_agents
         env = pogema_v0(grid_config=gc)
         env.reset()
-        assert num_agents == len(env.get_agents_xy())
-        assert num_agents == len(env.get_targets_xy())
+        assert num_agents == len(env.unwrapped.get_agents_xy())
+        assert num_agents == len(env.unwrapped.get_targets_xy())
 
 
 def test_custom_positions_and_empty_num_agents():
@@ -198,7 +198,7 @@ def test_custom_positions_and_empty_num_agents():
     )
     env = pogema_v0(grid_config=gc)
     env.reset()
-    assert len(gc.agents_xy) == len(env.get_agents_xy())
+    assert len(gc.agents_xy) == len(env.unwrapped.get_agents_xy())
 
 
 def test_persistent_env(num_steps=100):
@@ -217,7 +217,7 @@ def test_persistent_env(num_steps=100):
         return np.concatenate([np.array(observations).flatten(), terminates, truncates, np.array(rewards), ])
 
     for current_step in range(num_steps):
-        actions = action_sampler.sample_actions(dim=env.get_num_agents())
+        actions = action_sampler.sample_actions(dim=env.unwrapped.get_num_agents())
         obs, reward, terminated, truncated, info = env.step(actions)
 
         first_run_observations.append(state_repr(obs, reward, terminated, truncated, info))
@@ -233,7 +233,7 @@ def test_persistent_env(num_steps=100):
 
     second_run_observations = []
     for current_step in range(num_steps):
-        actions = action_sampler.sample_actions(dim=env.get_num_agents())
+        actions = action_sampler.sample_actions(dim=env.unwrapped.get_num_agents())
         obs, reward, terminated, truncated, info = env.step(actions)
         second_run_observations.append(state_repr(obs, reward, terminated, truncated, info))
         assert np.isclose(first_run_observations[current_step], second_run_observations[current_step]).all()

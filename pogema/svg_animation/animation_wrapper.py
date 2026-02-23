@@ -1,6 +1,6 @@
 import os
 from itertools import cycle
-from gymnasium import logger, Wrapper
+from gymnasium import Wrapper
 
 from pogema import GridConfig
 from pogema.svg_animation.animation_drawer import AnimationConfig, SvgSettings, GridHolder, AnimationDrawer
@@ -13,7 +13,7 @@ class AnimationMonitor(Wrapper):
     """
 
     def __init__(self, env, animation_config=AnimationConfig()):
-        self._working_radius = env.grid_config.obs_radius - 1
+        self._working_radius = env.unwrapped.grid_config.obs_radius - 1
         env = PersistentWrapper(env, xy_offset=-self._working_radius)
 
         super().__init__(env)
@@ -43,11 +43,10 @@ class AnimationMonitor(Wrapper):
             if save_tau:
                 if (self._episode_idx + 1) % save_tau or save_tau == 1:
                     if not os.path.exists(self.animation_config.directory):
-                        logger.info(f"Creating pogema monitor directory {self.animation_config.directory}", )
                         os.makedirs(self.animation_config.directory, exist_ok=True)
 
                     path = os.path.join(self.animation_config.directory,
-                                        self.pick_name(self.grid_config, self._episode_idx))
+                                        self.pick_name(self.unwrapped.grid_config, self._episode_idx))
                     self.save_animation(path)
 
         return obs, reward, terminated, truncated, info
@@ -96,23 +95,23 @@ class AnimationMonitor(Wrapper):
         """
         wr = self._working_radius
         if wr > 0:
-            obstacles = self.env.get_obstacles(ignore_borders=False)[wr:-wr, wr:-wr]
+            obstacles = self.unwrapped.get_obstacles(ignore_borders=False)[wr:-wr, wr:-wr]
         else:
-            obstacles = self.env.get_obstacles(ignore_borders=False)
+            obstacles = self.unwrapped.get_obstacles(ignore_borders=False)
         history: list[list[AgentState]] = self.env.decompress_history(self.history)
 
         svg_settings = SvgSettings()
         colors_cycle = cycle(svg_settings.colors)
-        agents_colors = {index: next(colors_cycle) for index in range(self.grid_config.num_agents)}
+        agents_colors = {index: next(colors_cycle) for index in range(self.unwrapped.grid_config.num_agents)}
 
-        for agent_idx in range(self.grid_config.num_agents):
+        for agent_idx in range(self.unwrapped.grid_config.num_agents):
             history[agent_idx].append(history[agent_idx][-1])
 
         episode_length = len(history[0])
         # Change episode length for egocentric environment
-        if animation_config.egocentric_idx is not None and self.grid_config.on_target == 'finish':
+        if animation_config.egocentric_idx is not None and self.unwrapped.grid_config.on_target == 'finish':
             episode_length = history[animation_config.egocentric_idx][-1].step + 1
-            for agent_idx in range(self.grid_config.num_agents):
+            for agent_idx in range(self.unwrapped.grid_config.num_agents):
                 history[agent_idx] = history[agent_idx][:episode_length]
 
         grid_holder = GridHolder(
@@ -120,8 +119,8 @@ class AnimationMonitor(Wrapper):
             obstacles=obstacles,
             episode_length=episode_length,
             history=history,
-            obs_radius=self.grid_config.obs_radius,
-            on_target=self.grid_config.on_target,
+            obs_radius=self.unwrapped.grid_config.obs_radius,
+            on_target=self.unwrapped.grid_config.on_target,
             colors=agents_colors,
             config=animation_config,
             svg_settings=svg_settings

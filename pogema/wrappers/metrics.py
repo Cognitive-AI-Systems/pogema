@@ -16,7 +16,7 @@ class AbstractMetric(Wrapper):
         obs, reward, terminated, truncated, infos = self.env.step(action)
         finished = all(truncated) or all(terminated)
 
-        metric = self._compute_stats(self._current_step, self.was_on_goal, finished)
+        metric = self._compute_stats(self._current_step, self.unwrapped.was_on_goal, finished)
         self._current_step += 1
         if finished:
             self._current_step = 0
@@ -40,7 +40,7 @@ class LifeLongAverageThroughputMetric(AbstractMetric):
             if on_goal:
                 self._solved_instances += 1
         if finished:
-            result = {'avg_throughput': self._solved_instances / self.grid_config.max_episode_steps}
+            result = {'avg_throughput': self._solved_instances / self.unwrapped.grid_config.max_episode_steps}
             self._solved_instances = 0
             return result
 
@@ -56,7 +56,7 @@ class NonDisappearISRMetric(AbstractMetric):
 
     def _compute_stats(self, step, is_on_goal, finished):
         if finished:
-            return {'ISR': float(sum(is_on_goal)) / self.get_num_agents()}
+            return {'ISR': float(sum(is_on_goal)) / self.unwrapped.get_num_agents()}
 
 
 class NonDisappearEpLengthMetric(AbstractMetric):
@@ -69,7 +69,7 @@ class NonDisappearEpLengthMetric(AbstractMetric):
 class EpLengthMetric(AbstractMetric):
     def __init__(self, env):
         super().__init__(env)
-        self._solve_time = [None for _ in range(self.get_num_agents())]
+        self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
 
     def _compute_stats(self, step, is_on_goal, finished):
         for idx, on_goal in enumerate(is_on_goal):
@@ -78,8 +78,8 @@ class EpLengthMetric(AbstractMetric):
                     self._solve_time[idx] = step
 
         if finished:
-            result = {'ep_length': sum(self._solve_time) / self.get_num_agents() + 1}
-            self._solve_time = [None for _ in range(self.get_num_agents())]
+            result = {'ep_length': sum(self._solve_time) / self.unwrapped.get_num_agents() + 1}
+            self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
             return result
 
 
@@ -91,7 +91,7 @@ class CSRMetric(AbstractMetric):
     def _compute_stats(self, step, is_on_goal, finished):
         self._solved_instances += sum(is_on_goal)
         if finished:
-            results = {'CSR': float(self._solved_instances == self.get_num_agents())}
+            results = {'CSR': float(self._solved_instances == self.unwrapped.get_num_agents())}
             self._solved_instances = 0
             return results
 
@@ -104,7 +104,7 @@ class ISRMetric(AbstractMetric):
     def _compute_stats(self, step, is_on_goal, finished):
         self._solved_instances += sum(is_on_goal)
         if finished:
-            results = {'ISR': self._solved_instances / self.get_num_agents()}
+            results = {'ISR': self._solved_instances / self.unwrapped.get_num_agents()}
             self._solved_instances = 0
             return results
 
@@ -112,7 +112,7 @@ class ISRMetric(AbstractMetric):
 class SumOfCostsAndMakespanMetric(AbstractMetric):
     def __init__(self, env):
         super().__init__(env)
-        self._solve_time = [None for _ in range(self.get_num_agents())]
+        self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
 
     def _compute_stats(self, step, is_on_goal, finished):
         for idx, on_goal in enumerate(is_on_goal):
@@ -122,8 +122,8 @@ class SumOfCostsAndMakespanMetric(AbstractMetric):
                 self._solve_time[idx] = None
 
         if finished:
-            result = {'SoC': sum(self._solve_time) + self.get_num_agents(), 'makespan': max(self._solve_time) + 1}
-            self._solve_time = [None for _ in range(self.get_num_agents())]
+            result = {'SoC': sum(self._solve_time) + self.unwrapped.get_num_agents(), 'makespan': max(self._solve_time) + 1}
+            self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
             return result
 
 
