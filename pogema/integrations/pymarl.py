@@ -15,7 +15,7 @@ class PyMarlPogema:
         self._observations, _ = self.env.reset()
         self.max_episode_steps = gc.max_episode_steps
         self.episode_limit = gc.max_episode_steps
-        self.n_agents = self.env.get_num_agents()
+        self.n_agents = self.env.unwrapped.get_num_agents()
 
         self.spec = None
 
@@ -43,14 +43,14 @@ class PyMarlPogema:
         return len(np.array(self._observations[0]).flatten())
 
     def get_state(self):
-        return self.env.get_state()
+        return self.env.unwrapped.get_state()
 
     def get_state_size(self):
         return len(self.get_state())
 
     def get_avail_actions(self):
         actions = []
-        for i in range(self.env.get_num_agents()):
+        for i in range(self.env.unwrapped.get_num_agents()):
             actions.append(self.get_avail_agent_actions(i))
         return actions
 
@@ -64,7 +64,7 @@ class PyMarlPogema:
         return 5
 
     def reset(self):
-        self._grid_config = self.env.grid_config
+        self._grid_config = self.env.unwrapped.grid_config
         self._observations, _ = self.env.reset()
         return np.array(self._observations).flatten()
 
@@ -91,4 +91,4 @@ class PyMarlPogema:
         return
 
     def sample_actions(self):
-        return self.env.sample_actions()
+        return self.env.unwrapped.sample_actions()

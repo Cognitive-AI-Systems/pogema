@@ -26,7 +26,7 @@ class SingleAgentWrapper(Wrapper):
 
     def step(self, action):
         observations, rewards, terminated, truncated, infos = self.env.step(
-            [action] + [self.env.action_space.sample() for _ in range(self.get_num_agents() - 1)])
+            [action] + [self.env.action_space.sample() for _ in range(self.unwrapped.get_num_agents() - 1)])
         return observations[0], rewards[0], terminated[0], truncated[0], infos[0]
 
     def reset(self, seed: Optional[int] = None, return_info: bool = True, options: Optional[dict] = None, ):

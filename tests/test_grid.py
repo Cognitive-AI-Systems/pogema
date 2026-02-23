@@ -181,8 +181,8 @@ def test_custom_starts_and_finishes_random():
     env = pogema_v0(grid_config=grid_config)
     env.reset()
     r = grid_config.obs_radius
-    assert [(x - r, y - r) for x, y in env.grid.positions_xy] == agents_xy and \
-           [(x - r, y - r) for x, y in env.grid.finishes_xy] == targets_xy
+    assert [(x - r, y - r) for x, y in env.unwrapped.grid.positions_xy] == agents_xy and \
+           [(x - r, y - r) for x, y in env.unwrapped.grid.finishes_xy] == targets_xy
 
 
 def test_out_of_bounds_for_custom_positions():

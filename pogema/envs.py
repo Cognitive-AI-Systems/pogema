@@ -464,7 +464,7 @@ def _make_pogema(grid_config):
         raise KeyError(f'Unknown on_target option: {grid_config.on_target}')
 
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
-    if env.grid_config.persistent:
+    if grid_config.persistent:
         env = PersistentWrapper(env)
     else:
         # adding metrics wrappers

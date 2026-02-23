@@ -12,13 +12,13 @@ def parallel_env(grid_config: GridConfig = GridConfig()):
 class PogemaParallel:
 
     def state(self):
-        return self.pogema.get_state()
+        return self.pogema.unwrapped.get_state()
 
     def __init__(self, grid_config: GridConfig, render_mode='ansi'):
         self.metadata = {'render_modes': ['ansi'], "name": "pogema"}
         self.render_mode = render_mode
         self.pogema = _make_pogema(grid_config)
-        self.possible_agents = ["player_" + str(r) for r in range(self.pogema.get_num_agents())]
+        self.possible_agents = ["player_" + str(r) for r in range(self.pogema.unwrapped.get_num_agents())]
         self.agent_name_mapping = dict(zip(self.possible_agents, list(range(len(self.possible_agents)))))
         self.agents = None
         self.num_moves = None
@@ -58,7 +58,7 @@ class PogemaParallel:
         d_infos = {agent: infos[anm[agent]] for agent in self.agents}
 
         for agent, idx in anm.items():
-            if (not self.pogema.grid.is_active[idx] or all(truncated) or all(terminated)) and agent in self.agents:
+            if (not self.pogema.unwrapped.grid.is_active[idx] or all(truncated) or all(terminated)) and agent in self.agents:
                 self.agents.remove(agent)
 
         return d_observations, d_rewards, d_terminated, d_truncated, d_infos
