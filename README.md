@@ -5,7 +5,7 @@
 
 **Partially-Observable Grid Environment for Multiple Agents**
 
-[![CodeFactor](https://www.codefactor.io/repository/github/tviskaron/pogema/badge)](https://www.codefactor.io/repository/github/tviskaron/pogema)
+
 [![Downloads](https://static.pepy.tech/badge/pogema)](https://pepy.tech/project/pogema)
 [![CI](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/CI.yml)
 [![CodeQL](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/codeql-analysis.yml) 
@@ -108,7 +108,6 @@ grid_config = GridConfig(num_agents=4,  # number of agents
 env = pogema_v0(grid_config=grid_config)
 env.reset()
 env.render()
-
 ```
 
 ### Custom maps
