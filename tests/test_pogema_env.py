@@ -1,12 +1,16 @@
+import os
 import time
+import warnings
 
 import numpy as np
+import pytest
 from tabulate import tabulate
 
-from pogema import pogema_v0, AnimationMonitor
+from pogema import pogema_v0, AnimationMonitor, AnimationConfig
 
 from pogema.envs import ActionsSampler
 from pogema.grid import GridConfig
+from pogema.wrappers.persistence import PersistentWrapper
 
 
 class ActionMapping:
@@ -203,8 +207,8 @@ def test_persistent_env(num_steps=100):
     seed = 42
 
     env = pogema_v0(
-        grid_config=GridConfig(on_target='finish', seed=seed, num_agents=8, density=0.132, size=8, obs_radius=2,
-                               persistent=True))
+        grid_config=GridConfig(on_target='finish', seed=seed, num_agents=8, density=0.132, size=8, obs_radius=2))
+    env = PersistentWrapper(env)
 
     env.reset()
     action_sampler = ActionsSampler(env.action_space.n, seed=seed)
@@ -240,12 +244,51 @@ def test_persistent_env(num_steps=100):
     assert np.isclose(first_run_observations, second_run_observations).all()
 
 
+def test_wrapper_attribute_forwarding():
+    import pytest
+    for on_target in ['finish', 'nothing', 'restart']:
+        gc = GridConfig(num_agents=2, size=6, seed=42, on_target=on_target)
+        env = pogema_v0(gc)
+        env.reset()
+
+        assert env.get_num_agents() == 2
+        assert env.grid_config is not None
+        assert env.sample_actions() is not None
+        assert env.get_obstacles() is not None
+        assert env.get_agents_xy() is not None
+        assert env.get_targets_xy() is not None
+
+        with pytest.raises(AttributeError):
+            env.nonexistent_attribute_xyz
+
+
+def test_wrapper_forwarding_persistent():
+    gc = GridConfig(num_agents=2, size=6, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env = PersistentWrapper(env)
+    env.reset()
+
+    assert env.get_num_agents() == 2
+    assert env.get_history() is not None
+    assert env.grid_config is not None
+
+
+def test_wrapper_forwarding_animation():
+    gc = GridConfig(num_agents=2, size=6, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env = AnimationMonitor(env)
+    env.reset()
+
+    assert env.get_num_agents() == 2
+    assert env.grid_config is not None
+
+
 def test_steps_per_second_throughput():
     table = []
     for on_target in ['finish', 'nothing', 'restart']:
         for num_agents in [1, 32, 64]:
             for size in [32, 64]:
-                gc = GridConfig(obs_radius=5, seed=42, max_episode_steps=1024, 
+                gc = GridConfig(obs_radius=5, seed=42, max_episode_steps=1024,
                               size=size, num_agents=num_agents, on_target=on_target)
 
                 start_time = time.monotonic()
@@ -254,3 +297,79 @@ def test_steps_per_second_throughput():
                 steps_per_second = gc.max_episode_steps / (end_time - start_time)
                 table.append([on_target, num_agents, size, steps_per_second * gc.num_agents])
     print('\n' + tabulate(table, headers=['on_target', 'num_agents', 'size', 'SPS (individual)'], tablefmt='grid'))
+
+
+def test_enable_animation_and_save(tmp_path):
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.enable_animation()
+    env.reset()
+    run_episode(env=env)
+
+    svg_path = str(tmp_path / 'test_anim.svg')
+    env.save_animation(svg_path)
+    assert os.path.exists(svg_path)
+    with open(svg_path) as f:
+        content = f.read()
+    assert '<svg' in content
+
+
+def test_no_overhead_without_animation():
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    assert not env.animation_is_active
+    env.reset()
+    run_episode(env=env)
+
+
+def test_disable_animation():
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.enable_animation()
+    assert env.animation_is_active
+    env.disable_animation()
+    assert not env.animation_is_active
+
+
+def test_save_animation_without_enable_raises():
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.reset()
+    with pytest.raises(RuntimeError, match="Animation is not active"):
+        env.save_animation('test.svg')
+
+
+def test_animation_monitor_backward_compat():
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        env = AnimationMonitor(env, AnimationConfig(save_every_idx_episode=None))
+        assert len(w) == 1
+        assert issubclass(w[0].category, DeprecationWarning)
+        assert "deprecated" in str(w[0].message).lower()
+    env.reset()
+    run_episode(env=env)
+
+
+def test_metrics_with_animation():
+    for on_target in ['finish', 'nothing', 'restart']:
+        gc = GridConfig(num_agents=2, seed=5, size=5, max_episode_steps=64, on_target=on_target)
+        env = pogema_v0(gc)
+        env.enable_animation()
+        env.reset()
+        *_, infos = run_episode(env=env)[-1]
+        assert 'metrics' in infos[0]
+
+
+def test_enable_animation_for_all_on_target_modes(tmp_path):
+    for on_target in ['finish', 'nothing', 'restart']:
+        gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42,
+                        on_target=on_target, max_episode_steps=16)
+        env = pogema_v0(gc)
+        env.enable_animation()
+        env.reset()
+        run_episode(env=env)
+        svg_path = str(tmp_path / f'test_{on_target}.svg')
+        env.save_animation(svg_path)
+        assert os.path.exists(svg_path)

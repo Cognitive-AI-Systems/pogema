@@ -10,7 +10,7 @@ from pogema.wrappers.metrics import LifeLongAverageThroughputMetric, NonDisappea
     NonDisappearCSRMetric, NonDisappearISRMetric, EpLengthMetric, ISRMetric, CSRMetric, SumOfCostsAndMakespanMetric
 from pogema.wrappers.multi_time_limit import MultiTimeLimit
 from pogema.generator import generate_new_target, generate_from_possible_targets
-from pogema.wrappers.persistence import PersistentWrapper
+from pogema.wrappers.animation import AnimationWrapper
 
 
 class ActionsSampler:
@@ -464,22 +464,29 @@ def _make_pogema(grid_config):
         raise KeyError(f'Unknown on_target option: {grid_config.on_target}')
 
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
+    env = AnimationWrapper(env)
+
     if grid_config.persistent:
-        env = PersistentWrapper(env)
+        warnings.warn(
+            "GridConfig.persistent is deprecated. Use env.enable_animation() instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        env.enable_animation()
+
+    # adding metrics wrappers
+    if grid_config.on_target == 'restart':
+        env = LifeLongAverageThroughputMetric(env)
+    elif grid_config.on_target == 'nothing':
+        env = NonDisappearISRMetric(env)
+        env = NonDisappearCSRMetric(env)
+        env = NonDisappearEpLengthMetric(env)
+        env = SumOfCostsAndMakespanMetric(env)
+    elif grid_config.on_target == 'finish':
+        env = ISRMetric(env)
+        env = CSRMetric(env)
+        env = EpLengthMetric(env)
     else:
-        # adding metrics wrappers
-        if grid_config.on_target == 'restart':
-            env = LifeLongAverageThroughputMetric(env)
-        elif grid_config.on_target == 'nothing':
-            env = NonDisappearISRMetric(env)
-            env = NonDisappearCSRMetric(env)
-            env = NonDisappearEpLengthMetric(env)
-            env = SumOfCostsAndMakespanMetric(env)
-        elif grid_config.on_target == 'finish':
-            env = ISRMetric(env)
-            env = CSRMetric(env)
-            env = EpLengthMetric(env)
-        else:
-            raise KeyError(f'Unknown on_target option: {grid_config.on_target}')
+        raise KeyError(f'Unknown on_target option: {grid_config.on_target}')
 
     return env

@@ -18,12 +18,12 @@ class GridConfig(CommonSettings):
     num_agents: Optional[int] = None
     possible_agents_xy: Optional[list] = None
     possible_targets_xy: Optional[list] = None
-    collision_system: Literal['block_both', 'priority', 'soft'] = 'priority'
+    collision_system: Literal['block_both', 'priority', 'soft'] = 'soft'
     persistent: bool = False
     observation_type: Literal['POMAPF', 'MAPF', 'default'] = 'default'
     map: Optional[Union[list, str]] = None
     map_name: Optional[str] = None
-    integration: Optional[Literal['SampleFactory', 'PyMARL', 'rllib', 'gymnasium', 'PettingZoo']] = None
+    integration: Optional[Literal['SampleFactory', 'gymnasium', 'PettingZoo']] = None
     max_episode_steps: int = 64
     auto_reset: Optional[bool] = None
 

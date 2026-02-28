@@ -1,6 +1,6 @@
 The development history of POGEMA, starting from version 1.0.0.
 
-Version 1.5.0 (August, 2025)
+Version 1.4.X (August, 2025)
 	•	Added support of custom targets_xy for lifelong MAPF.
 	•	Improved work with rectangular grids. Added width and height attributes to GridConfig.
 	•	Added method update_config to properly update all attributes of GridConfig.
