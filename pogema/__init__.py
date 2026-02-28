@@ -24,4 +24,6 @@ __all__ = [
 register(
     id="Pogema-v0",
     entry_point="pogema.integrations.make_pogema:make_single_agent_gym",
+    order_enforce=False,
+    disable_env_checker=True,
 )

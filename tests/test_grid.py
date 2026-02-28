@@ -400,9 +400,9 @@ def test_grid_with_goal_sequences():
 def test_pogema_lifelong_with_sequences():
     from pogema.envs import PogemaLifeLong
     import warnings
-    
+
     config = GridConfig(
-        width=8, height=8,
+        width=8, height=8, density=0,
         agents_xy=[[1, 1], [1, 2]],
         targets_xy=[
             [[2, 2], [3, 3], [4, 4]],
