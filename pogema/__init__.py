@@ -13,6 +13,8 @@ __version__ = '1.4.0'
 __all__ = [
     'GridConfig',
     'pogema_v0',
+    'AnimationMonitor',
+    'AnimationConfig',
     'AStarAgent', 'BatchAStarAgent',
     "PogemaWrapper",
     "AnimationWrapper",
