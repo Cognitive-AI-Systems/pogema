@@ -112,7 +112,7 @@ def test_mapf_observation():
 
 def test_standard_pogema_animation():
     env = pogema_v0(GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish'))
-    env = AnimationMonitor(env)
+    env.enable_animation()
     env.reset()
     run_episode(env=env)
 
@@ -122,7 +122,7 @@ def test_gym_pogema_animation():
     env = gymnasium.make('Pogema-v0',
                          grid_config=GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42,
                                                 on_target='finish'))
-    env = AnimationMonitor(env)
+    env.enable_animation()
     env.reset()
 
     while True:
@@ -145,7 +145,7 @@ def test_non_disappearing_pogema_no_seed():
 
 def test_non_disappearing_pogema_animation():
     env = pogema_v0(GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='nothing'))
-    env = AnimationMonitor(env)
+    env.enable_animation()
     env.reset()
     run_episode(env=env)
 
@@ -164,7 +164,7 @@ def test_life_long_pogema_empty_seed():
 
 def test_life_long_pogema_animation():
     env = pogema_v0(GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='restart'))
-    env = AnimationMonitor(env)
+    env.enable_animation()
     env.reset()
     run_episode(env=env)
 
@@ -276,7 +276,7 @@ def test_wrapper_forwarding_persistent():
 def test_wrapper_forwarding_animation():
     gc = GridConfig(num_agents=2, size=6, seed=42, on_target='finish')
     env = pogema_v0(gc)
-    env = AnimationMonitor(env)
+    env.enable_animation()
     env.reset()
 
     assert env.get_num_agents() == 2

@@ -84,6 +84,21 @@ class PogemaWrapper(Wrapper):
     def set_elapsed_steps(self, elapsed_steps: int) -> None:
         return self.env.set_elapsed_steps(elapsed_steps)
 
+    # -- AnimationWrapper --
+
+    def enable_animation(self, animation_config=None):
+        return self.env.enable_animation(animation_config)
+
+    def disable_animation(self):
+        return self.env.disable_animation()
+
+    def save_animation(self, name='render.svg', animation_config=None):
+        return self.env.save_animation(name, animation_config=animation_config)
+
+    @property
+    def animation_is_active(self):
+        return self.env.animation_is_active
+
     # -- Fallback for any remaining forwarded names --
 
     def __getattr__(self, name):
