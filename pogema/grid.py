@@ -215,8 +215,27 @@ class Grid:
         result[c.obs_radius - dx, c.obs_radius - dy] = 1
         return result.astype(np.float32)
 
-    def render(self, mode='human'):
-        render_grid(self.obstacles, self.positions_xy, self.finishes_xy, self.is_active, mode=mode)
+    def render(self, mode='human', border='thin'):
+        gc = self.config
+        r = gc.obs_radius
+
+        if border == 'none':
+            trim = r
+        elif border == 'full':
+            trim = 0
+        else:
+            trim = max(r - 1, 0)
+
+        if trim == 0:
+            obs = self.obstacles.copy()
+            agents = deepcopy(self.positions_xy)
+            targets = deepcopy(self.finishes_xy)
+        else:
+            obs = self.obstacles[trim:-trim, trim:-trim].copy()
+            agents = [[x - trim, y - trim] for x, y in self.positions_xy]
+            targets = [[x - trim, y - trim] for x, y in self.finishes_xy]
+
+        render_grid(obs, agents, targets, self.is_active, mode=mode)
 
     def move_agent_to_cell(self, agent_id, x, y):
         if self.positions[self.positions_xy[agent_id]] == self.config.FREE:

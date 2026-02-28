@@ -1,10 +1,11 @@
 import time
 
 import numpy as np
-from gymnasium import Wrapper
+
+from pogema.wrappers.base import PogemaWrapper
 
 
-class AbstractMetric(Wrapper):
+class AbstractMetric(PogemaWrapper):
     def _compute_stats(self, step, is_on_goal, finished):
         raise NotImplementedError
 
@@ -127,7 +128,7 @@ class SumOfCostsAndMakespanMetric(AbstractMetric):
             return result
 
 
-class AgentsDensityWrapper(Wrapper):
+class AgentsDensityWrapper(PogemaWrapper):
     def __init__(self, env):
         super().__init__(env)
         self._avg_agents_density = None
@@ -155,7 +156,7 @@ class AgentsDensityWrapper(Wrapper):
         return observations, info
 
 
-class RuntimeMetricWrapper(Wrapper):
+class RuntimeMetricWrapper(PogemaWrapper):
     def __init__(self, env):
         super().__init__(env)
         self._start_time = None

@@ -1,9 +1,9 @@
 from copy import deepcopy
 
-from gymnasium import Wrapper
+from pogema.wrappers.base import PogemaWrapper
 
 
-class IsMultiAgentWrapper(Wrapper):
+class IsMultiAgentWrapper(PogemaWrapper):
     def __init__(self, env):
         super().__init__(env)
 
@@ -14,7 +14,7 @@ class IsMultiAgentWrapper(Wrapper):
         return self.unwrapped.get_num_agents()
 
 
-class MetricsForwardingWrapper(Wrapper):
+class MetricsForwardingWrapper(PogemaWrapper):
     def step(self, action):
 
         observations, rewards, terminated, truncated, infos = self.env.step(action)
@@ -24,7 +24,7 @@ class MetricsForwardingWrapper(Wrapper):
         return observations, rewards, terminated, truncated, infos
 
 
-class AutoResetWrapper(Wrapper):
+class AutoResetWrapper(PogemaWrapper):
     def step(self, action):
         observations, rewards, terminated, truncated, infos = self.env.step(action)
         if all(terminated) or all(truncated):
