@@ -18,7 +18,7 @@ class GridConfig(CommonSettings):
     num_agents: Optional[int] = None
     possible_agents_xy: Optional[list] = None
     possible_targets_xy: Optional[list] = None
-    collision_system: Literal['block_both', 'priority', 'soft'] = 'soft'
+    collision_system: Literal['block_both', 'priority', 'soft'] = 'priority'
     persistent: bool = False
     observation_type: Literal['POMAPF', 'MAPF', 'default'] = 'default'
     map: Optional[Union[list, str]] = None
