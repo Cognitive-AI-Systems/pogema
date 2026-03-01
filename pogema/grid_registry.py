@@ -41,7 +41,8 @@ class RegisteredGrid:
                     raise KeyError(f"Unsupported symbol '{char}' at line {idx}")
             if row:
                 if obstacles:
-                    assert len(obstacles[-1]) == len(row), f"Wrong string size for row {idx};"
+                    if len(obstacles[-1]) != len(row):
+                        raise ValueError(f"Row {idx} has {len(row)} columns, expected {len(obstacles[-1])}")
                 obstacles.append(row)
         return obstacles, agents, targets
 

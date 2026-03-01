@@ -1,7 +1,5 @@
 import time
 
-import numpy as np
-
 from pogema.wrappers.base import PogemaWrapper
 
 
@@ -150,34 +148,6 @@ class SumOfCostsAndMakespanMetric(AbstractMetric):
             result = {'SoC': sum(self._solve_time) + self.unwrapped.get_num_agents(), 'makespan': max(self._solve_time) + 1}
             self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
             return result
-
-
-class AgentsDensityWrapper(PogemaWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        self._avg_agents_density = None
-
-    def count_agents(self, observations):
-        avg_agents_density = []
-        for obs in observations:
-            traversable_cells = np.size(obs['obstacles']) - np.count_nonzero(obs['obstacles'])
-            avg_agents_density.append(np.count_nonzero(obs['agents']) / traversable_cells)
-        self._avg_agents_density.append(np.mean(avg_agents_density))
-
-    def step(self, actions):
-        observations, rewards, terminated, truncated, infos = self.env.step(actions)
-        self.count_agents(observations)
-        if all(terminated) or all(truncated):
-            if 'metrics' not in infos[0]:
-                infos[0]['metrics'] = {}
-            infos[0]['metrics'].update(avg_agents_density=float(np.mean(self._avg_agents_density)))
-        return observations, rewards, terminated, truncated, infos
-
-    def reset(self, **kwargs):
-        self._avg_agents_density = []
-        observations, info = self.env.reset(**kwargs)
-        self.count_agents(observations)
-        return observations, info
 
 
 class RuntimeMetricWrapper(PogemaWrapper):
