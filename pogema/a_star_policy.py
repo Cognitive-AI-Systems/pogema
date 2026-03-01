@@ -24,7 +24,8 @@ class GridMemory:
         m = self._memory
         r = self._memory.shape[0]
         self._memory = np.zeros(shape=(r * 2 + 1, r * 2 + 1))
-        assert self._try_to_insert(r, r, m, self._memory)
+        if not self._try_to_insert(r, r, m, self._memory):
+            raise RuntimeError("GridMemory invariant violation: failed to copy data into expanded memory")
 
     def update(self, x, y, obstacles):
         while True:

@@ -19,5 +19,6 @@ class MultiTimeLimit(PogemaWrapper):
         return self.env.reset(**kwargs)
 
     def set_elapsed_steps(self, elapsed_steps: int) -> None:
-        assert elapsed_steps >= 0
+        if elapsed_steps < 0:
+            raise ValueError(f"elapsed_steps must be non-negative, got {elapsed_steps}")
         self._elapsed_steps = elapsed_steps

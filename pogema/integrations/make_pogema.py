@@ -1,3 +1,4 @@
+import warnings
 
 from pogema import GridConfig
 from pogema.envs import _make_pogema
@@ -31,6 +32,14 @@ class SingleAgentWrapper(PogemaWrapper):
 
 
 def make_single_agent_gym(grid_config: GridConfig | dict = GridConfig()):
+    if grid_config.num_agents > 1:
+        warnings.warn(
+            f"SingleAgentWrapper is wrapping an environment with {grid_config.num_agents} agents. "
+            f"Only agent 0 will be controlled; agents 1-{grid_config.num_agents - 1} will take random actions. "
+            f"Use integration=None or integration='PettingZoo' for multi-agent control.",
+            UserWarning,
+            stacklevel=2,
+        )
     env = _make_pogema(grid_config)
     env = SingleAgentWrapper(env)
 

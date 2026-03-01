@@ -36,9 +36,7 @@ class PogemaParallel:
             raise ValueError(f"Unknown agent '{agent}'. Possible agents: {self.possible_agents}")
         return self.pogema.action_space
 
-    def render(self, mode="human"):
-        if mode != 'human':
-            raise ValueError(f"Unsupported render mode '{mode}'. Only 'human' is supported.")
+    def render(self):
         return self.pogema.render()
 
     def reset(self, seed=None, options=None):
@@ -72,4 +70,4 @@ class PogemaParallel:
         return self
 
     def close(self):
-        pass
+        self.pogema.close()

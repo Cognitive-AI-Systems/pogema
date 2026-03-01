@@ -17,7 +17,6 @@ from pogema.wrappers.metrics import (
     NonDisappearEpLengthMetric,
     SumOfCostsAndMakespanMetric,
     LifeLongAverageThroughputMetric,
-    AgentsDensityWrapper,
     RuntimeMetricWrapper,
 )
 from pogema.wrappers.multi_time_limit import MultiTimeLimit
@@ -41,7 +40,7 @@ __all__ = [
     'CSRMetric', 'ISRMetric', 'EpLengthMetric',
     'NonDisappearCSRMetric', 'NonDisappearISRMetric', 'NonDisappearEpLengthMetric',
     'SumOfCostsAndMakespanMetric', 'LifeLongAverageThroughputMetric',
-    'AgentsDensityWrapper', 'RuntimeMetricWrapper',
+    'RuntimeMetricWrapper',
 ]
 
 register(

@@ -130,7 +130,9 @@ class Pogema(PogemaBase):
             raise ValueError(f"Unknown observation type: {self.grid.config.observation_type}")
 
     def step(self, action: list):
-        assert len(action) == self.grid_config.num_agents
+        num_agents = self.grid_config.num_agents
+        if len(action) != num_agents:
+            raise ValueError(f"Expected {num_agents} actions, got {len(action)}")
         rewards = []
 
         terminated = []
@@ -219,14 +221,17 @@ class Pogema(PogemaBase):
         return infos
 
     def _revert_action(self, agent_idx, used_cells, cell, actions):
-        actions[agent_idx] = 0
-        used_cells[cell].remove(agent_idx)
-        new_cell = self.grid.positions_xy[agent_idx]
-        if new_cell in used_cells and len(used_cells[new_cell]) > 0:
-            used_cells[new_cell].append(agent_idx)
-            return self._revert_action(used_cells[new_cell][0], used_cells, new_cell, actions)
-        else:
-            used_cells.setdefault(new_cell, []).append(agent_idx)
+        while True:
+            actions[agent_idx] = 0
+            used_cells[cell].remove(agent_idx)
+            new_cell = self.grid.positions_xy[agent_idx]
+            if new_cell in used_cells and len(used_cells[new_cell]) > 0:
+                used_cells[new_cell].append(agent_idx)
+                agent_idx = used_cells[new_cell][0]
+                cell = new_cell
+            else:
+                used_cells.setdefault(new_cell, []).append(agent_idx)
+                break
         return actions, used_cells
 
     def move_agents(self, actions):
@@ -302,6 +307,7 @@ class PogemaLifeLong(Pogema):
         super().__init__(grid_config)
         self.current_goal_indices = [0] * grid_config.num_agents
         self.has_custom_sequences = grid_config.targets_xy is not None
+        self._lifelong_targets_cache: dict[bool, list] = {}
 
     def _initialize_grid(self):
         self.grid: GridLifeLong = GridLifeLong(grid_config=self.grid_config)
@@ -317,6 +323,9 @@ class PogemaLifeLong(Pogema):
             else:
                 return [[[x + self.grid_config.obs_radius, y + self.grid_config.obs_radius] for x, y in sequence]
                         for sequence in self.grid_config.targets_xy]
+
+        if ignore_borders in self._lifelong_targets_cache:
+            return self._lifelong_targets_cache[ignore_borders]
 
         sequences = []
 
@@ -367,10 +376,13 @@ class PogemaLifeLong(Pogema):
                 total_distance += abs(current_pos[0] - goal_coords[0]) + abs(current_pos[1] - goal_coords[1])
                 current_pos = goal_coords
             sequences.append(agent_sequence)
+
+        self._lifelong_targets_cache[ignore_borders] = sequences
         return sequences
 
     def reset(self, seed: int | None = None, return_info: bool = True, options: dict | None = None):
         self.current_goal_indices = [0] * self.grid_config.num_agents
+        self._lifelong_targets_cache = {}
         return super().reset(seed=seed, return_info=return_info, options=options)
 
     def _generate_new_target(self, agent_idx):
@@ -404,7 +416,9 @@ class PogemaLifeLong(Pogema):
                                     self.grid.positions_xy[agent_idx])
 
     def step(self, action: list):
-        assert len(action) == self.grid_config.num_agents
+        num_agents = self.grid_config.num_agents
+        if len(action) != num_agents:
+            raise ValueError(f"Expected {num_agents} actions, got {len(action)}")
         rewards = []
 
         infos = [dict() for _ in range(self.grid_config.num_agents)]
@@ -442,7 +456,9 @@ class PogemaCoopFinish(Pogema):
         self.grid: Grid = Grid(grid_config=self.grid_config)
 
     def step(self, action: list):
-        assert len(action) == self.grid_config.num_agents
+        num_agents = self.grid_config.num_agents
+        if len(action) != num_agents:
+            raise ValueError(f"Expected {num_agents} actions, got {len(action)}")
 
         infos = [dict() for _ in range(self.grid_config.num_agents)]
 
