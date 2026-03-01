@@ -23,7 +23,7 @@ class SingleAgentWrapper(PogemaWrapper):
         return observations[0], rewards[0], terminated[0], truncated[0], infos[0]
 
     def reset(self, seed: int | None = None, return_info: bool = True, options: dict | None = None, ):
-        observations, infos = self.env.reset()
+        observations, infos = self.env.reset(seed=seed, options=options)
         if return_info:
             return observations[0], infos[0]
         else:
@@ -42,7 +42,7 @@ def make_pogema(grid_config: GridConfig | dict = GridConfig(), *args, **kwargs) 
         grid_config = GridConfig(**grid_config)
 
     if grid_config.integration != 'SampleFactory' and grid_config.auto_reset:
-        raise KeyError(f"{grid_config.integration} does not support auto_reset")
+        raise ValueError(f"auto_reset is only supported with integration='SampleFactory', got '{grid_config.integration}'")
 
     if grid_config.integration is None:
         return _make_pogema(grid_config)
@@ -53,7 +53,8 @@ def make_pogema(grid_config: GridConfig | dict = GridConfig(), *args, **kwargs) 
     elif grid_config.integration == 'gymnasium':
         return make_single_agent_gym(grid_config)
 
-    raise KeyError(grid_config.integration)
+    raise ValueError(f"Unknown integration: '{grid_config.integration}'. "
+                     f"Must be 'SampleFactory', 'gymnasium', 'PettingZoo', or None.")
 
 
 pogema_v0 = make_pogema

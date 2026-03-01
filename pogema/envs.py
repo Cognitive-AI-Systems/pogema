@@ -168,6 +168,7 @@ class Pogema(PogemaBase):
     def reset(self, seed: int | None = None, return_info: bool = True, options: dict | None = None, ):
         if seed is not None:
             self.grid_config.seed = seed
+            self._multi_action_sampler.update_seed(seed)
         self._initialize_grid()
         self.update_was_on_goal()
 
@@ -468,7 +469,7 @@ def _make_pogema(grid_config):
     elif grid_config.on_target == 'finish':
         env = Pogema(grid_config=grid_config)
     else:
-        raise KeyError(f'Unknown on_target option: {grid_config.on_target}')
+        raise ValueError(f"Unknown on_target option: '{grid_config.on_target}'. Must be 'finish', 'nothing', or 'restart'.")
 
     env = MultiTimeLimit(env, grid_config.max_episode_steps)
     env = AnimationWrapper(env)
@@ -494,6 +495,6 @@ def _make_pogema(grid_config):
         env = CSRMetric(env)
         env = EpLengthMetric(env)
     else:
-        raise KeyError(f'Unknown on_target option: {grid_config.on_target}')
+        raise ValueError(f"Unknown on_target option: '{grid_config.on_target}'. Must be 'finish', 'nothing', or 'restart'.")
 
     return env

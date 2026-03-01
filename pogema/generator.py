@@ -106,7 +106,9 @@ def placing(order, components, grid, start_id, num_agents):
 def generate_from_possible_positions(grid_config: GridConfig):
     if (len(grid_config.possible_agents_xy) < grid_config.num_agents or
             len(grid_config.possible_targets_xy) < grid_config.num_agents):
-        raise OverflowError(f"Can't create task. Not enough possible positions for {grid_config.num_agents} agents.")
+        raise ValueError(f"Can't create task. Not enough possible positions for {grid_config.num_agents} agents. "
+                         f"Available: {len(grid_config.possible_agents_xy)} agent positions, "
+                         f"{len(grid_config.possible_targets_xy)} target positions.")
     rng = np.random.default_rng(grid_config.seed)
     rng.shuffle(grid_config.possible_agents_xy)
     rng.shuffle(grid_config.possible_targets_xy)

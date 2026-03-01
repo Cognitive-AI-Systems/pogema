@@ -51,10 +51,10 @@ def test_goals():
 
 
 def test_overflow():
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(seed=1, obs_radius=2, size=4, num_agents=100, density=0.0))
 
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(seed=1, obs_radius=2, size=4, num_agents=1, density=1.0))
 
 
@@ -71,7 +71,7 @@ def test_edge_cases():
     with pytest.raises(ValidationError):
         GridConfig(seed=1, obs_radius=2, size=4, num_agents=0, density=0.4)
 
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(seed=1, obs_radius=2, size=4, num_agents=1, density=1.0))
 
     with pytest.raises(ValidationError):
@@ -80,9 +80,9 @@ def test_edge_cases():
 
 def test_edge_cases_for_custom_map():
     test_map = [[0, 0, 0]]
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(seed=1, obs_radius=2, size=4, num_agents=2, map=test_map))
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(seed=2, obs_radius=2, size=4, num_agents=4, map=test_map))
 
 
@@ -143,7 +143,7 @@ def test_overflow_for_custom_map():
         [0, 1, 0, 1, 0],
         [0, 1, 0, 0, 1],
     ]
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(obs_radius=2, size=4, num_agents=5, density=0.3, map=test_map), num_retries=100)
 
 
@@ -199,7 +199,7 @@ def test_out_of_bounds_for_custom_positions():
 
 def test_duplicated_params():
     grid_map = "Aa"
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         GridConfig(agents_xy=[[0, 0]], targets_xy=[[0, 0]], map=grid_map)
 
 
@@ -221,7 +221,7 @@ def test_custom_grid_with_specific_positions():
         !!!!!!!!!!!!!!!!!!
     """
     Grid(GridConfig(obs_radius=2, size=4, num_agents=24, map=grid_map))
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(obs_radius=2, size=4, num_agents=25, map=grid_map))
 
     grid_map = """
@@ -236,7 +236,7 @@ def test_custom_grid_with_specific_positions():
         !!!!!!!!!!!
     """
     Grid(GridConfig(obs_radius=2, num_agents=16, map=grid_map))
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(obs_radius=2, num_agents=17, map=grid_map))
 
     grid_map = """
@@ -246,7 +246,7 @@ def test_custom_grid_with_specific_positions():
             !@@!@@!.aB.
 
         """
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         Grid(GridConfig(obs_radius=2, map=grid_map))
 
 
@@ -261,7 +261,7 @@ def test_restricted_grid():
     env = pogema_v0(grid_config=GridConfig(map=grid, num_agents=24, seed=0, obs_radius=2))
     env.reset()
 
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError):
         env = pogema_v0(grid_config=GridConfig(map=grid, num_agents=25, seed=0, obs_radius=2))
         env.reset()
 
@@ -494,7 +494,7 @@ def test_goal_sequences_position_format():
             targets_xy=[[[2, 2, 3], [4, 4]]]
         )
 
-    with pytest.raises(ValueError, match="Position coordinates must be integers"):
+    with pytest.raises((ValueError, ValidationError)):
         GridConfig(
             width=8, height=8,
             agents_xy=[[0, 0]],

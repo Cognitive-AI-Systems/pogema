@@ -9,9 +9,18 @@ class AbstractMetric(PogemaWrapper):
     def _compute_stats(self, step, is_on_goal, finished):
         raise NotImplementedError
 
+    def _reset_stats(self):
+        pass
+
     def __init__(self, env):
         super().__init__(env)
         self._current_step = 0
+
+    def reset(self, **kwargs):
+        result = self.env.reset(**kwargs)
+        self._current_step = 0
+        self._reset_stats()
+        return result
 
     def step(self, action):
         obs, reward, terminated, truncated, infos = self.env.step(action)
@@ -34,6 +43,9 @@ class LifeLongAverageThroughputMetric(AbstractMetric):
 
     def __init__(self, env):
         super().__init__(env)
+        self._solved_instances = 0
+
+    def _reset_stats(self):
         self._solved_instances = 0
 
     def _compute_stats(self, step, is_on_goal, finished):
@@ -72,6 +84,9 @@ class EpLengthMetric(AbstractMetric):
         super().__init__(env)
         self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
 
+    def _reset_stats(self):
+        self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
+
     def _compute_stats(self, step, is_on_goal, finished):
         for idx, on_goal in enumerate(is_on_goal):
             if self._solve_time[idx] is None:
@@ -89,6 +104,9 @@ class CSRMetric(AbstractMetric):
         super().__init__(env)
         self._solved_instances = 0
 
+    def _reset_stats(self):
+        self._solved_instances = 0
+
     def _compute_stats(self, step, is_on_goal, finished):
         self._solved_instances += sum(is_on_goal)
         if finished:
@@ -102,6 +120,9 @@ class ISRMetric(AbstractMetric):
         super().__init__(env)
         self._solved_instances = 0
 
+    def _reset_stats(self):
+        self._solved_instances = 0
+
     def _compute_stats(self, step, is_on_goal, finished):
         self._solved_instances += sum(is_on_goal)
         if finished:
@@ -113,6 +134,9 @@ class ISRMetric(AbstractMetric):
 class SumOfCostsAndMakespanMetric(AbstractMetric):
     def __init__(self, env):
         super().__init__(env)
+        self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
+
+    def _reset_stats(self):
         self._solve_time = [None for _ in range(self.unwrapped.get_num_agents())]
 
     def _compute_stats(self, step, is_on_goal, finished):

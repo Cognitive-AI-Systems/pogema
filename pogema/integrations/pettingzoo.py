@@ -26,16 +26,19 @@ class PogemaParallel:
 
     @functools.cache
     def observation_space(self, agent):
-        assert agent in self.possible_agents
+        if agent not in self.possible_agents:
+            raise ValueError(f"Unknown agent '{agent}'. Possible agents: {self.possible_agents}")
         return self.pogema.observation_space
 
     @functools.cache
     def action_space(self, agent):
-        assert agent in self.possible_agents
+        if agent not in self.possible_agents:
+            raise ValueError(f"Unknown agent '{agent}'. Possible agents: {self.possible_agents}")
         return self.pogema.action_space
 
     def render(self, mode="human"):
-        assert mode == 'human'
+        if mode != 'human':
+            raise ValueError(f"Unsupported render mode '{mode}'. Only 'human' is supported.")
         return self.pogema.render()
 
     def reset(self, seed=None, options=None):

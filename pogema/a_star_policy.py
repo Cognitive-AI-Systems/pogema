@@ -42,7 +42,7 @@ class GridMemory:
 
 
 class Node:
-    def __init__(self, coord: (int, int) = (INF, INF), g: int = 0, h: int = 0):
+    def __init__(self, coord: tuple[int, int] = (INF, INF), g: int = 0, h: int = 0):
         self.i, self.j = coord
         self.g = g
         self.h = h
@@ -104,7 +104,10 @@ class AStarAgent:
 
 
         if self._saved_xy is not None and h(self._saved_xy, xy) > 1:
-            raise IndexError("Agent moved more than 1 step. Please, call clear_state method before new episode.")
+            raise IndexError(
+                "Agent moved more than 1 step between calls to act(). "
+                "This usually means a new episode started. Call agent.clear_state() before each new episode."
+            )
         if self._saved_xy is not None and h(self._saved_xy, xy) == 0 and xy != target_xy:
             return self._rnd.integers(len(self._moves))
         self._gm.update(*xy, obstacles)

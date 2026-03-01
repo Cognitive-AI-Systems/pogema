@@ -1,32 +1,64 @@
 import sys
 from typing import Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from pogema.utils import CommonSettings
 
 
 class GridConfig(CommonSettings):
-    on_target: Literal['finish', 'nothing', 'restart'] = 'finish'
-    seed: int | None = None
-    width: int | None = None
-    height: int | None = None
-    size: int = 8
-    density: float = 0.3
-    obs_radius: int = 5
-    agents_xy: list | None = None
-    targets_xy: list | None = None
-    num_agents: int | None = None
-    possible_agents_xy: list | None = None
-    possible_targets_xy: list | None = None
-    collision_system: Literal['block_both', 'priority', 'soft'] = 'priority'
-    persistent: bool = False
-    observation_type: Literal['POMAPF', 'MAPF', 'default'] = 'default'
-    map: list | str | None = None
-    map_name: str | None = None
-    integration: Literal['SampleFactory', 'gymnasium', 'PettingZoo'] | None = None
-    max_episode_steps: int = 64
-    auto_reset: bool | None = None
+    on_target: Literal['finish', 'nothing', 'restart'] = Field(
+        'finish',
+        description="Behavior when agent reaches target: "
+                    "'finish' (agent disappears), 'nothing' (agent stays, all must reach simultaneously), "
+                    "'restart' (agent gets new target, lifelong MAPF).",
+    )
+    seed: int | None = Field(None, description="Random seed for reproducibility.")
+    width: int | None = Field(None, description="Grid width. Must be paired with height.")
+    height: int | None = Field(None, description="Grid height. Must be paired with width.")
+    size: int = Field(8, description="Grid size (used as both width and height when they are not set).")
+    density: float = Field(0.3, description="Obstacle density in [0, 1] for random map generation.")
+    obs_radius: int = Field(
+        5, description="Observation radius. Each agent sees a (2*obs_radius+1) x (2*obs_radius+1) window.",
+    )
+    agents_xy: list[list[int]] | None = Field(
+        None, description="Fixed agent start positions as [[row, col], ...].",
+    )
+    targets_xy: list[list[int]] | list[list[list[int]]] | None = Field(
+        None,
+        description="Target positions: [[row, col], ...] for single targets, "
+                    "or [[[r1,c1],[r2,c2],...], ...] for goal sequences (lifelong MAPF).",
+    )
+    num_agents: int | None = Field(None, description="Number of agents. Auto-inferred from agents_xy or map if not set.")
+    possible_agents_xy: list[list[int]] | None = Field(
+        None, description="Pool of positions to randomly sample agent starts from.",
+    )
+    possible_targets_xy: list[list[int]] | None = Field(
+        None, description="Pool of positions to randomly sample targets from.",
+    )
+    collision_system: Literal['block_both', 'priority', 'soft'] = Field(
+        'priority',
+        description="Collision resolution: 'priority' (higher index wins), "
+                    "'block_both' (both agents stay), 'soft' (vertex and edge collision avoidance).",
+    )
+    persistent: bool = Field(False, description="Deprecated. Use env.enable_animation() instead.")
+    observation_type: Literal['POMAPF', 'MAPF', 'default'] = Field(
+        'default',
+        description="Observation format: 'default' (3-channel array), "
+                    "'POMAPF' (dict with obstacles/agents/xy/target_xy), "
+                    "'MAPF' (POMAPF + global state).",
+    )
+    map: list[list[int]] | str | None = Field(
+        None,
+        description="Custom map as a 2D list of 0/1 (free/obstacle) or a string with special characters "
+                    "(. # @ $ ! a-z A-Z).",
+    )
+    map_name: str | None = Field(None, description="Name of a registered map from the grid registry.")
+    integration: Literal['SampleFactory', 'gymnasium', 'PettingZoo'] | None = Field(
+        None, description="Framework integration: None (raw multi-agent), 'gymnasium', 'PettingZoo', or 'SampleFactory'.",
+    )
+    max_episode_steps: int = Field(64, description="Maximum number of steps per episode before truncation.")
+    auto_reset: bool | None = Field(None, description="Auto-reset on episode end (SampleFactory only).")
 
     @model_validator(mode='before')
     @classmethod
@@ -42,10 +74,10 @@ class GridConfig(CommonSettings):
                 )
                 if agents_xy and targets_xy and data.get('agents_xy') is not None and data.get(
                         'targets_xy') is not None:
-                    raise KeyError("""Can't create task. Please provide agents_xy and targets_xy only once.
-                Either with parameters or with a map.""")
+                    raise ValueError("Can't create task. Please provide agents_xy and targets_xy only once: "
+                                     "either with parameters or with a map.")
                 if (agents_xy or targets_xy) and (possible_agents_xy or possible_targets_xy):
-                    raise KeyError("""Can't create task. Mark either possible locations or precise ones.""")
+                    raise ValueError("Can't create task. Mark either possible locations or precise ones.")
                 elif agents_xy and targets_xy:
                     data['agents_xy'] = agents_xy
                     data['targets_xy'] = targets_xy
@@ -109,12 +141,12 @@ class GridConfig(CommonSettings):
         self.height = height
         self.size = size
 
-        if not (1 <= width <= 4096):
-            raise ValueError(f"width must be in [1, 4096], got {width}")
-        if not (1 <= height <= 4096):
-            raise ValueError(f"height must be in [1, 4096], got {height}")
-        if not (2 <= size <= 4096):
-            raise ValueError(f"size must be in [2, 4096], got {size}")
+        if not (1 <= width <= 8_388_608):
+            raise ValueError(f"width must be in [1, 8_388_608], got {width}")
+        if not (1 <= height <= 8_388_608):
+            raise ValueError(f"height must be in [1, 8_388_608], got {height}")
+        if not (2 <= size <= 8_388_608):
+            raise ValueError(f"size must be in [2, 8_388_608], got {size}")
 
         # Validate positions
         agents_xy = self.agents_xy
@@ -136,16 +168,19 @@ class GridConfig(CommonSettings):
     @field_validator('seed')
     @classmethod
     def seed_initialization(cls, v):
-        assert v is None or (0 <= v < sys.maxsize), f"seed must be in [0, {sys.maxsize}]"
+        if v is not None and not (0 <= v < sys.maxsize):
+            raise ValueError(f"seed must be in [0, {sys.maxsize})")
         return v
 
     @staticmethod
     def _validate_dimension(v, field_name):
         if v is not None:
             if field_name == 'size':
-                assert 2 <= v <= 4096, f"{field_name} must be in [2, 4096]"
+                if not (2 <= v <= 8_388_608):
+                    raise ValueError(f"{field_name} must be in [2, 8_388_608]")
             else:
-                assert 1 <= v <= 4096, f"{field_name} must be in [1, 4096]"
+                if not (1 <= v <= 8_388_608):
+                    raise ValueError(f"{field_name} must be in [1, 8_388_608]")
         return v
 
     @field_validator('size')
@@ -166,7 +201,8 @@ class GridConfig(CommonSettings):
     @field_validator('density')
     @classmethod
     def density_restrictions(cls, v):
-        assert 0.0 <= v <= 1, "density must be in [0, 1]"
+        if not (0.0 <= v <= 1):
+            raise ValueError("density must be in [0, 1]")
         return v
 
     @field_validator('agents_xy')
@@ -225,18 +261,20 @@ class GridConfig(CommonSettings):
             if not isinstance(x, int) or not isinstance(y, int):
                 raise ValueError("Position coordinates must be integers")
             if not (0 <= x < height and 0 <= y < width):
-                raise IndexError(f"Position is out of bounds! {position} is not in [{0}, {height}] x [{0}, {width}]")
+                raise IndexError(f"Position {position} is out of bounds: row must be in [0, {height}), col in [0, {width})")
 
     @field_validator('num_agents')
     @classmethod
     def num_agents_must_be_positive(cls, v):
-        assert 1 <= v <= 10000000, "num_agents must be in [1, 10000000]"
+        if not (1 <= v <= 10_000_000):
+            raise ValueError("num_agents must be in [1, 10_000_000]")
         return v
 
     @field_validator('obs_radius')
     @classmethod
     def obs_radius_must_be_positive(cls, v):
-        assert 1 <= v <= 128, "obs_radius must be in [1, 128]"
+        if not (1 <= v <= 128):
+            raise ValueError("obs_radius must be in [1, 128]")
         return v
 
     @field_validator('map')
@@ -285,16 +323,18 @@ class GridConfig(CommonSettings):
                     possible_agents_xy.append(position)
                     possible_targets_xy.append(position)
                 else:
-                    raise KeyError(f"Unsupported symbol '{char}' at line {row_idx}")
+                    raise ValueError(f"Unsupported symbol '{char}' at line {row_idx}")
 
             if row:
-                assert len(obstacles[-1]) == len(row) if obstacles else True, f"Wrong string size for row {row_idx};"
+                if obstacles and len(obstacles[-1]) != len(row):
+                    raise ValueError(f"Inconsistent row width at row {row_idx}: expected {len(obstacles[-1])}, got {len(row)}")
                 obstacles.append(row)
 
         agents_xy = [[x, y] for _, (x, y) in sorted(agents.items())]
         targets_xy = [[x, y] for _, (x, y) in sorted(targets.items())]
 
-        assert len(targets_xy) == len(agents_xy), "Mismatch in number of agents and targets."
+        if len(targets_xy) != len(agents_xy):
+            raise ValueError(f"Mismatch in number of agents ({len(agents_xy)}) and targets ({len(targets_xy)}) in map.")
 
         if not any(char in special_chars for char in str_map):
             possible_agents_xy, possible_targets_xy = None, None

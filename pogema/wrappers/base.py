@@ -102,6 +102,16 @@ class PogemaWrapper(Wrapper):
     def animation_is_active(self):
         return self.env.animation_is_active
 
+    def __repr__(self):
+        gc = self.grid_config
+        return (
+            f"{type(self.unwrapped).__name__}("
+            f"num_agents={gc.num_agents}, "
+            f"size={gc.width}x{gc.height}, "
+            f"on_target='{gc.on_target}', "
+            f"collision='{gc.collision_system}')"
+        )
+
     # -- Fallback for any remaining forwarded names --
 
     def __getattr__(self, name):
