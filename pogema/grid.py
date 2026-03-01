@@ -69,8 +69,9 @@ class Grid:
                 self.starts_xy, self.finishes_xy = generate_positions_and_targets_fast(self.obstacles, self.config)
 
         if not self.starts_xy or not self.finishes_xy or len(self.starts_xy) != len(self.finishes_xy):
-            raise OverflowError(
-                "Can't create task. Please check grid grid_config, especially density, num_agent and map.")
+            raise ValueError(
+                "Can't create task. Not enough free cells to place all agents and targets. "
+                "Try reducing density, num_agents, or using a larger map.")
 
         if add_artificial_border:
             self.add_artificial_border()
@@ -244,7 +245,7 @@ class Grid:
 
     def move_agent_to_cell(self, agent_id, x, y):
         if self.positions[self.positions_xy[agent_id]] == self.config.FREE:
-            raise KeyError(f"Agent {agent_id} is not in the map")
+            raise ValueError(f"Agent {agent_id} is not in the map")
         self.positions[self.positions_xy[agent_id]] = self.config.FREE
         if self.obstacles[x, y] != self.config.FREE or self.positions[x, y] != self.config.FREE:
             raise ValueError(f"Can't force agent to blocked position {x} {y}")
@@ -290,7 +291,7 @@ class Grid:
 
         self.is_active[agent_id] = True
         if self.positions[self.positions_xy[agent_id]] == self.config.OBSTACLE:
-            raise KeyError("The cell is already occupied")
+            raise ValueError("The cell is already occupied")
         self.positions[self.positions_xy[agent_id]] = self.config.OBSTACLE
         return True
 
