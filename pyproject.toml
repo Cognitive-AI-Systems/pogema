@@ -25,13 +25,13 @@ dependencies = [
     "gymnasium>=1.2.3",
     "numpy>=2.0",
     "pydantic>=2.12.5",
-    "pettingzoo>=1.24.0,<1.25.0"
+    "pettingzoo>=1.24.0,<2.0.0",
 ]
 urls = { "Homepage" = "https://github.com/Cognitive-AI-Systems/pogema" }
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "tabulate"]
-dev = ["ruff", "pytest", "pytest-cov", "tabulate"]
+test = ["pytest", "pytest-cov", "tabulate", "pytest-codeblocks[test]>=0.17.0"]
+dev = ["pogema[test]", "ruff"]
 
 [tool.hatch.version]
 path = "pogema/__init__.py"
@@ -49,5 +49,12 @@ testpaths = ["tests"]
 line-length = 127
 
 [tool.ruff.lint]
-select = ["E", "F"]
-ignore = []
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "B008",  # mutable default arguments — intentional for Pydantic/dataclass defaults
+    "B905",  # zip() without strict= — not needed for same-length iterables
+    "B019",  # functools.cache on methods — required by PettingZoo API
+]
+
+[tool.ruff.lint.per-file-ignores]
+"pogema/__init__.py" = ["I001"]  # import order constrained by circular import

@@ -1,31 +1,32 @@
 import sys
-from typing import Optional, Union
+from typing import Literal
+
 from pydantic import field_validator, model_validator
+
 from pogema.utils import CommonSettings
-from typing_extensions import Literal
 
 
 class GridConfig(CommonSettings):
     on_target: Literal['finish', 'nothing', 'restart'] = 'finish'
-    seed: Optional[int] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
+    seed: int | None = None
+    width: int | None = None
+    height: int | None = None
     size: int = 8
     density: float = 0.3
     obs_radius: int = 5
-    agents_xy: Optional[list] = None
-    targets_xy: Optional[list] = None
-    num_agents: Optional[int] = None
-    possible_agents_xy: Optional[list] = None
-    possible_targets_xy: Optional[list] = None
+    agents_xy: list | None = None
+    targets_xy: list | None = None
+    num_agents: int | None = None
+    possible_agents_xy: list | None = None
+    possible_targets_xy: list | None = None
     collision_system: Literal['block_both', 'priority', 'soft'] = 'priority'
     persistent: bool = False
     observation_type: Literal['POMAPF', 'MAPF', 'default'] = 'default'
-    map: Optional[Union[list, str]] = None
-    map_name: Optional[str] = None
-    integration: Optional[Literal['SampleFactory', 'gymnasium', 'PettingZoo']] = None
+    map: list | str | None = None
+    map_name: str | None = None
+    integration: Literal['SampleFactory', 'gymnasium', 'PettingZoo'] | None = None
     max_episode_steps: int = 64
-    auto_reset: Optional[bool] = None
+    auto_reset: bool | None = None
 
     @model_validator(mode='before')
     @classmethod

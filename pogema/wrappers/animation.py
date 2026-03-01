@@ -1,7 +1,29 @@
+import os
 from itertools import cycle
 
 from pogema.wrappers.base import PogemaWrapper
 from pogema.wrappers.persistence import AgentState, decompress_history
+
+
+class SvgAnimation:
+    def __init__(self, svg_str):
+        self._svg_str = svg_str
+
+    def _repr_html_(self):
+        return self._svg_str
+
+    def save(self, path='render.svg'):
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w") as f:
+            f.write(self._svg_str)
+
+    def __str__(self):
+        return self._svg_str
+
+    def __repr__(self):
+        return f"SvgAnimation({len(self._svg_str)} chars)"
 
 
 class AnimationWrapper(PogemaWrapper):
@@ -55,7 +77,7 @@ class AnimationWrapper(PogemaWrapper):
     def animation_is_active(self):
         return self._active
 
-    def save_animation(self, name='render.svg', animation_config=None):
+    def _build_svg_string(self, animation_config=None):
         if not self._active:
             raise RuntimeError(
                 "Animation is not active. Call env.enable_animation() and then env.reset() before saving."
@@ -65,7 +87,7 @@ class AnimationWrapper(PogemaWrapper):
                 "No history recorded. Call env.reset() after enable_animation() before saving."
             )
 
-        from pogema.svg_animation.animation_drawer import AnimationConfig, SvgSettings, GridHolder, AnimationDrawer
+        from pogema.svg_animation.animation_drawer import AnimationConfig, AnimationDrawer, GridHolder, SvgSettings
 
         if animation_config is None:
             animation_config = self._animation_config
@@ -120,5 +142,10 @@ class AnimationWrapper(PogemaWrapper):
         )
 
         animation = AnimationDrawer().create_animation(grid_holder)
-        with open(name, "w") as f:
-            f.write(animation.render())
+        return animation.render()
+
+    def render_animation(self, animation_config=None):
+        return SvgAnimation(self._build_svg_string(animation_config=animation_config))
+
+    def save_animation(self, name='render.svg', animation_config=None):
+        self.render_animation(animation_config=animation_config).save(name)

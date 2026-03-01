@@ -3,8 +3,8 @@ import warnings
 
 from pogema import GridConfig
 from pogema.svg_animation.animation_drawer import AnimationConfig
-from pogema.wrappers.base import PogemaWrapper
 from pogema.wrappers.animation import AnimationWrapper
+from pogema.wrappers.base import PogemaWrapper
 
 
 def _find_animation_wrapper(env):
@@ -87,7 +87,7 @@ class AnimationMonitor(PogemaWrapper):
 
 
 def main():
-    from pogema import GridConfig, pogema_v0, BatchAStarAgent
+    from pogema import BatchAStarAgent, GridConfig, pogema_v0
 
     for egocentric_idx in [0, 1]:
         for on_target in ['nothing', 'restart', 'finish']:

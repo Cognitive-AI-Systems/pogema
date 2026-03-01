@@ -1,16 +1,24 @@
-from typing import Optional
 import warnings
-import numpy as np
+
 import gymnasium
+import numpy as np
 from gymnasium.error import ResetNeeded
 
+from pogema.generator import generate_from_possible_targets, generate_new_target
 from pogema.grid import Grid, GridLifeLong
 from pogema.grid_config import GridConfig
-from pogema.wrappers.metrics import LifeLongAverageThroughputMetric, NonDisappearEpLengthMetric, \
-    NonDisappearCSRMetric, NonDisappearISRMetric, EpLengthMetric, ISRMetric, CSRMetric, SumOfCostsAndMakespanMetric
-from pogema.wrappers.multi_time_limit import MultiTimeLimit
-from pogema.generator import generate_new_target, generate_from_possible_targets
 from pogema.wrappers.animation import AnimationWrapper
+from pogema.wrappers.metrics import (
+    CSRMetric,
+    EpLengthMetric,
+    ISRMetric,
+    LifeLongAverageThroughputMetric,
+    NonDisappearCSRMetric,
+    NonDisappearEpLengthMetric,
+    NonDisappearISRMetric,
+    SumOfCostsAndMakespanMetric,
+)
+from pogema.wrappers.multi_time_limit import MultiTimeLimit
 
 
 class ActionsSampler:
@@ -39,7 +47,7 @@ class PogemaBase(gymnasium.Env):
     def step(self, action):
         raise NotImplementedError
 
-    def reset(self, seed: Optional[int] = None, return_info: bool = False, options: Optional[dict] = None, ):
+    def reset(self, seed: int | None = None, return_info: bool = False, options: dict | None = None, ):
         raise NotImplementedError
 
     def __init__(self, grid_config: GridConfig = GridConfig()):
@@ -157,12 +165,11 @@ class Pogema(PogemaBase):
         self.was_on_goal = [self.grid.on_goal(agent_idx) and self.grid.is_active[agent_idx]
                             for agent_idx in range(self.grid_config.num_agents)]
 
-    def reset(self, seed: Optional[int] = None, return_info: bool = True, options: Optional[dict] = None, ):
+    def reset(self, seed: int | None = None, return_info: bool = True, options: dict | None = None, ):
+        if seed is not None:
+            self.grid_config.seed = seed
         self._initialize_grid()
         self.update_was_on_goal()
-
-        if seed is not None:
-            self.grid.seed = seed
 
         if return_info:
             return self._obs(), self._get_infos()
@@ -268,7 +275,7 @@ class Pogema(PogemaBase):
                 if self.grid.is_active[agent_idx]:
                     self.grid.move_without_checks(agent_idx, actions[agent_idx])
         else:
-            raise ValueError('Unknown collision system: {}'.format(self.grid.config.collision_system))
+            raise ValueError(f'Unknown collision system: {self.grid.config.collision_system}')
 
     def get_agents_xy_relative(self):
         return self.grid.get_agents_xy_relative()
@@ -301,15 +308,15 @@ class PogemaLifeLong(Pogema):
         main_rng = np.random.default_rng(self.grid_config.seed)
         seeds = main_rng.integers(np.iinfo(np.int32).max, size=self.grid_config.num_agents)
         self.random_generators = [np.random.default_rng(seed) for seed in seeds]
-        
+
     def get_lifelong_targets_xy(self, ignore_borders=False):
         if self.has_custom_sequences:
             if ignore_borders:
                 return self.grid_config.targets_xy
             else:
-                return [[[x + self.grid_config.obs_radius, y + self.grid_config.obs_radius] for x, y in sequence] 
+                return [[[x + self.grid_config.obs_radius, y + self.grid_config.obs_radius] for x, y in sequence]
                         for sequence in self.grid_config.targets_xy]
-        
+
         sequences = []
 
         main_rng = np.random.default_rng(self.grid_config.seed)
@@ -323,24 +330,24 @@ class PogemaLifeLong(Pogema):
             agent_sequence.append(initial_target)
             current_pos = initial_target
             total_distance = abs(start_pos[0] - initial_target[0]) + abs(start_pos[1] - initial_target[1])
-            
+
             while total_distance < self.grid_config.max_episode_steps:
                 if ignore_borders:
-                    generator_pos = (current_pos[0] + self.grid_config.obs_radius, 
+                    generator_pos = (current_pos[0] + self.grid_config.obs_radius,
                                    current_pos[1] + self.grid_config.obs_radius)
                 else:
                     generator_pos = tuple(current_pos)
 
                 if self.grid_config.possible_targets_xy is not None:
                     new_goal = generate_from_possible_targets(
-                        temp_generators[agent_idx], 
-                        self.grid_config.possible_targets_xy, 
+                        temp_generators[agent_idx],
+                        self.grid_config.possible_targets_xy,
                         generator_pos
                     )
                     if ignore_borders:
                         goal_coords = list(new_goal)
                     else:
-                        goal_coords = [new_goal[0] + self.grid_config.obs_radius, 
+                        goal_coords = [new_goal[0] + self.grid_config.obs_radius,
                                        new_goal[1] + self.grid_config.obs_radius]
                 else:
                     new_goal = generate_new_target(
@@ -350,7 +357,7 @@ class PogemaLifeLong(Pogema):
                         generator_pos
                     )
                     if ignore_borders:
-                        goal_coords = [new_goal[0] - self.grid_config.obs_radius, 
+                        goal_coords = [new_goal[0] - self.grid_config.obs_radius,
                                        new_goal[1] - self.grid_config.obs_radius]
                     else:
                         goal_coords = list(new_goal)
@@ -361,7 +368,7 @@ class PogemaLifeLong(Pogema):
             sequences.append(agent_sequence)
         return sequences
 
-    def reset(self, seed: Optional[int] = None, return_info: bool = True, options: Optional[dict] = None):
+    def reset(self, seed: int | None = None, return_info: bool = True, options: dict | None = None):
         self.current_goal_indices = [0] * self.grid_config.num_agents
         return super().reset(seed=seed, return_info=return_info, options=options)
 
@@ -370,9 +377,9 @@ class PogemaLifeLong(Pogema):
             agent_targets = self.grid_config.targets_xy[agent_idx]
             current_idx = self.current_goal_indices[agent_idx]
             next_target = agent_targets[(current_idx + 1) % len(agent_targets)]
-            
+
             self.current_goal_indices[agent_idx] = (current_idx + 1) % len(agent_targets)
-            
+
             if self.current_goal_indices[agent_idx] == 0 and current_idx == len(agent_targets) - 1:
                 warnings.warn(
                     f"Agent {agent_idx} has completed all {len(agent_targets)} provided targets and "
@@ -381,12 +388,12 @@ class PogemaLifeLong(Pogema):
                     UserWarning,
                     stacklevel=2
                 )
-            
-            return (next_target[0] + self.grid_config.obs_radius, 
+
+            return (next_target[0] + self.grid_config.obs_radius,
                    next_target[1] + self.grid_config.obs_radius)
         elif self.grid_config.possible_targets_xy is not None:
-            new_goal = generate_from_possible_targets(self.random_generators[agent_idx], 
-                                                     self.grid_config.possible_targets_xy, 
+            new_goal = generate_from_possible_targets(self.random_generators[agent_idx],
+                                                     self.grid_config.possible_targets_xy,
                                                      self.grid.positions_xy[agent_idx])
             return (new_goal[0] + self.grid_config.obs_radius, new_goal[1] + self.grid_config.obs_radius)
         else:

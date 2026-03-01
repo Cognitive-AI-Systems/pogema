@@ -1,5 +1,7 @@
-import numpy as np
 from heapq import heappop, heappush
+
+import numpy as np
+
 from pogema import GridConfig, pogema_v0
 
 INF = 1000000007
@@ -116,7 +118,7 @@ class DeterministicPolicy:
             self.agents[k].update_path(start, goal)
             next_node = self.agents[k].get_next_node()
             actions.append(self.actions[(next_node[0] - start[0], next_node[1] - start[1])])
-        for idx, action in enumerate(actions):
+        for idx, _action in enumerate(actions):
             if self._rnd.random() < self._random_rate:
                 actions[idx] = self._rnd.randint(1, 4)
         return actions
@@ -144,7 +146,7 @@ def test_life_long():
     assert np.isclose(metrics['avg_throughput'], 1.671875)
     metrics = results_generator.__next__()
     assert np.isclose(metrics['avg_throughput'], 1.609375)
-    
+
     gc = GridConfig(num_agents=24, size=8, obs_radius=4, seed=43, max_episode_steps=64, on_target='restart')
     results_generator = run_policy(gc)
 

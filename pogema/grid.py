@@ -1,12 +1,17 @@
-from copy import deepcopy
 import warnings
+from copy import deepcopy
 
 import numpy as np
 
-from pogema.generator import generate_obstacles, generate_positions_and_targets_fast, \
-    get_components, generate_from_possible_positions
+from pogema.generator import (
+    generate_from_possible_positions,
+    generate_obstacles,
+    generate_positions_and_targets_fast,
+    get_components,
+)
+
 from .grid_config import GridConfig
-from .grid_registry import in_registry, get_grid
+from .grid_registry import get_grid, in_registry
 from .utils import render_grid
 
 
@@ -31,7 +36,7 @@ class Grid:
                 self.finishes_xy = [sequence[0] for sequence in grid_config.targets_xy]
             else:
                 self.finishes_xy = grid_config.targets_xy
-                
+
             if len(self.starts_xy) != len(self.finishes_xy):
                 raise IndexError("Can't create task. Please provide agents_xy and targets_xy of the same size.")
             if grid_config.num_agents > len(self.starts_xy):
@@ -239,7 +244,7 @@ class Grid:
 
     def move_agent_to_cell(self, agent_id, x, y):
         if self.positions[self.positions_xy[agent_id]] == self.config.FREE:
-            raise KeyError("Agent {} is not in the map".format(agent_id))
+            raise KeyError(f"Agent {agent_id} is not in the map")
         self.positions[self.positions_xy[agent_id]] = self.config.FREE
         if self.obstacles[x, y] != self.config.FREE or self.positions[x, y] != self.config.FREE:
             raise ValueError(f"Can't force agent to blocked position {x} {y}")
@@ -269,9 +274,6 @@ class Grid:
 
     def on_goal(self, agent_id):
         return self.positions_xy[agent_id] == self.finishes_xy[agent_id]
-
-    def is_active(self, agent_id):
-        return self.is_active[agent_id]
 
     def hide_agent(self, agent_id):
         if not self.is_active[agent_id]:

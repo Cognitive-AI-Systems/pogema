@@ -37,7 +37,7 @@ class LifeLongAverageThroughputMetric(AbstractMetric):
         self._solved_instances = 0
 
     def _compute_stats(self, step, is_on_goal, finished):
-        for agent_idx, on_goal in enumerate(is_on_goal):
+        for _agent_idx, on_goal in enumerate(is_on_goal):
             if on_goal:
                 self._solved_instances += 1
         if finished:

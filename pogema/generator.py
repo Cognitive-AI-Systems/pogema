@@ -111,7 +111,7 @@ def generate_from_possible_positions(grid_config: GridConfig):
     rng.shuffle(grid_config.possible_agents_xy)
     rng.shuffle(grid_config.possible_targets_xy)
     return grid_config.possible_agents_xy[:grid_config.num_agents], grid_config.possible_targets_xy[:grid_config.num_agents]
-    
+
 
 def generate_positions_and_targets_fast(obstacles, grid_config):
     c = grid_config

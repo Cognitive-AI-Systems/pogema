@@ -1,7 +1,8 @@
-import numpy as np
-from pogema import GridConfig
-
 from heapq import heappop, heappush
+
+import numpy as np
+
+from pogema import GridConfig
 
 INF = 1e7
 
