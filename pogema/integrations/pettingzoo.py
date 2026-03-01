@@ -1,6 +1,7 @@
 import functools
 
 import numpy as np
+
 from pogema import GridConfig
 from pogema.envs import _make_pogema
 
@@ -23,12 +24,12 @@ class PogemaParallel:
         self.agents = None
         self.num_moves = None
 
-    @functools.lru_cache(maxsize=None)
+    @functools.cache
     def observation_space(self, agent):
         assert agent in self.possible_agents
         return self.pogema.observation_space
 
-    @functools.lru_cache(maxsize=None)
+    @functools.cache
     def action_space(self, agent):
         assert agent in self.possible_agents
         return self.pogema.action_space

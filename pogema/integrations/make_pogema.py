@@ -1,10 +1,9 @@
-from typing import Union, Optional
 
 from pogema import GridConfig
-from pogema.wrappers.base import PogemaWrapper
 from pogema.envs import _make_pogema
 from pogema.integrations.pettingzoo import parallel_env
 from pogema.integrations.sample_factory import AutoResetWrapper, IsMultiAgentWrapper, MetricsForwardingWrapper
+from pogema.wrappers.base import PogemaWrapper
 
 
 def _make_sample_factory_integration(grid_config):
@@ -23,7 +22,7 @@ class SingleAgentWrapper(PogemaWrapper):
             [action] + [self.env.action_space.sample() for _ in range(self.unwrapped.get_num_agents() - 1)])
         return observations[0], rewards[0], terminated[0], truncated[0], infos[0]
 
-    def reset(self, seed: Optional[int] = None, return_info: bool = True, options: Optional[dict] = None, ):
+    def reset(self, seed: int | None = None, return_info: bool = True, options: dict | None = None, ):
         observations, infos = self.env.reset()
         if return_info:
             return observations[0], infos[0]
@@ -31,14 +30,14 @@ class SingleAgentWrapper(PogemaWrapper):
             return observations[0]
 
 
-def make_single_agent_gym(grid_config: Union[GridConfig, dict] = GridConfig()):
+def make_single_agent_gym(grid_config: GridConfig | dict = GridConfig()):
     env = _make_pogema(grid_config)
     env = SingleAgentWrapper(env)
 
     return env
 
 
-def make_pogema(grid_config: Union[GridConfig, dict] = GridConfig(), *args, **kwargs) -> PogemaWrapper:
+def make_pogema(grid_config: GridConfig | dict = GridConfig(), *args, **kwargs) -> PogemaWrapper:
     if isinstance(grid_config, dict):
         grid_config = GridConfig(**grid_config)
 

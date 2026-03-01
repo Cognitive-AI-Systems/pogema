@@ -19,7 +19,7 @@ _POGEMA_FORWARDED = frozenset({
     # PogemaLifeLong
     'get_lifelong_targets_xy',
     # AnimationWrapper
-    'enable_animation', 'disable_animation', 'save_animation', 'animation_is_active',
+    'enable_animation', 'disable_animation', 'save_animation', 'render_animation', 'animation_is_active',
 })
 
 
@@ -94,6 +94,9 @@ class PogemaWrapper(Wrapper):
 
     def save_animation(self, name='render.svg', animation_config=None):
         return self.env.save_animation(name, animation_config=animation_config)
+
+    def render_animation(self, animation_config=None):
+        return self.env.render_animation(animation_config=animation_config)
 
     @property
     def animation_is_active(self):

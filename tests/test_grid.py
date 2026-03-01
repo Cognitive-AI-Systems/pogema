@@ -1,10 +1,9 @@
 import numpy as np
+import pytest
 from pydantic import ValidationError
 
 from pogema import GridConfig
 from pogema.grid import Grid
-import pytest
-
 from pogema.integrations.make_pogema import pogema_v0
 
 
@@ -291,10 +290,10 @@ def test_rectangular_grid_mixed_config():
 def test_rectangular_grid_validation():
     with pytest.raises(ValueError):
         GridConfig(width=12)
-    
+
     with pytest.raises(ValueError):
         GridConfig(height=8)
-    
+
     GridConfig(width=12, height=8)
     GridConfig(size=10)
     GridConfig(size=10, width=12, height=8)
@@ -304,10 +303,10 @@ def test_rectangular_grid_position_validation():
     config = GridConfig(width=12, height=8, agents_xy=[[0, 11], [7, 0]], targets_xy=[[7, 11], [0, 0]])
     assert len(config.agents_xy) == 2
     assert len(config.targets_xy) == 2
-    
+
     with pytest.raises(IndexError):
         GridConfig(width=12, height=8, agents_xy=[[8, 0]], targets_xy=[[0, 0]])
-    
+
     with pytest.raises(IndexError):
         GridConfig(width=12, height=8, agents_xy=[[0, 12]], targets_xy=[[0, 0]])
 
@@ -315,7 +314,7 @@ def test_rectangular_grid_position_validation():
 def test_rectangular_grid_creation():
     config = GridConfig(width=12, height=8, seed=1, num_agents=2)
     grid = Grid(config)
-    
+
     assert np.isclose(grid.config.width, 12)
     assert np.isclose(grid.config.height, 8)
     assert np.isclose(grid.config.size, 12)
@@ -333,42 +332,42 @@ def test_goal_sequences_validation():
     assert np.isclose(len(config.targets_xy), 2)
     assert np.isclose(len(config.targets_xy[0]), 3)
     assert np.isclose(len(config.targets_xy[1]), 2)
-    
+
     config = GridConfig(
         width=8, height=8,
         agents_xy=[[0, 0], [1, 1]],
         targets_xy=[[7, 7], [6, 6]]
     )
     assert np.isclose(len(config.targets_xy), 2)
-    
+
     with pytest.raises(ValueError):
         GridConfig(
             width=8, height=8,
             agents_xy=[[0, 0], [1, 1]],
             targets_xy=[[[2, 2], [3, 3]], [4, 4]]
         )
-    
+
     with pytest.raises(ValueError):
         GridConfig(
             width=8, height=8,
             agents_xy=[[0, 0]],
             targets_xy=[[[2, 2]]]
         )
-    
+
     with pytest.raises(ValueError):
         GridConfig(
             width=8, height=8,
             agents_xy=[[0, 0]],
             targets_xy=[[[2.5, 2], [3, 3]]]
         )
-    
+
     with pytest.raises(IndexError):
         GridConfig(
             width=8, height=8,
             agents_xy=[[0, 0]],
             targets_xy=[[[2, 2], [10, 10]]]
         )
-    
+
     with pytest.raises(ValueError, match="on_target='restart' requires goal sequences"):
         GridConfig(
             width=8, height=8,
@@ -387,19 +386,20 @@ def test_grid_with_goal_sequences():
             [[2, 4], [3, 5]]
         ]
     )
-    
+
     grid = Grid(config)
-    
+
     expected_initial_targets = [[2, 2], [2, 4]]
     r = config.obs_radius
     expected_with_offset = [(x + r, y + r) for x, y in expected_initial_targets]
-    
+
     assert np.isclose(grid.finishes_xy, expected_with_offset).all()
 
 
 def test_pogema_lifelong_with_sequences():
-    from pogema.envs import PogemaLifeLong
     import warnings
+
+    from pogema.envs import PogemaLifeLong
 
     config = GridConfig(
         width=8, height=8, density=0,
@@ -410,34 +410,34 @@ def test_pogema_lifelong_with_sequences():
         ],
         on_target='restart'
     )
-    
+
     env = PogemaLifeLong(grid_config=config)
     env.reset()
-    
+
     assert env.has_custom_sequences is True
     assert np.isclose(env.current_goal_indices, [0, 0]).all()
-    
+
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        
+
         env._generate_new_target(0)
         assert np.isclose(env.current_goal_indices[0], 1)
-        
+
         env._generate_new_target(0)
         assert np.isclose(env.current_goal_indices[0], 2)
-        
+
         env._generate_new_target(0)
         assert np.isclose(env.current_goal_indices[0], 0)
-        
+
         cycling_warnings = [warning for warning in w if "completed all 3 provided targets" in str(warning.message)]
         assert np.isclose(len(cycling_warnings), 1)
-    
+
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        
+
         env._generate_new_target(1)
         env._generate_new_target(1)
-        
+
         assert np.isclose(len(w), 1)
         assert "completed all 2 provided targets" in str(w[0].message)
         assert "cycling back to the beginning" in str(w[0].message)
@@ -445,7 +445,7 @@ def test_pogema_lifelong_with_sequences():
 
 def test_pogema_lifelong_reset():
     from pogema.envs import PogemaLifeLong
-    
+
     config = GridConfig(
         width=8, height=8,
         agents_xy=[[1, 1], [1, 2]],
@@ -455,32 +455,32 @@ def test_pogema_lifelong_reset():
         ],
         on_target='restart'
     )
-    
+
     env = PogemaLifeLong(grid_config=config)
     env.reset()
-    
+
     env._generate_new_target(0)
     env._generate_new_target(1)
     assert np.isclose(env.current_goal_indices, [1, 1]).all()
-    
+
     env.reset()
     assert np.isclose(env.current_goal_indices, [0, 0]).all()
 
 
 def test_pogema_lifelong_without_sequences():
     from pogema.envs import PogemaLifeLong
-    
+
     config = GridConfig(
         width=8, height=8,
         num_agents=2,
         on_target='restart'
     )
-    
+
     env = PogemaLifeLong(grid_config=config)
     env.reset()
-    
+
     assert env.has_custom_sequences is False
-    
+
     target = env._generate_new_target(0)
     assert isinstance(target, tuple)
     assert np.isclose(len(target), 2)
@@ -493,7 +493,7 @@ def test_goal_sequences_position_format():
             agents_xy=[[0, 0]],
             targets_xy=[[[2, 2, 3], [4, 4]]]
         )
-    
+
     with pytest.raises(ValueError, match="Position coordinates must be integers"):
         GridConfig(
             width=8, height=8,

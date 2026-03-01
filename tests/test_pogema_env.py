@@ -6,8 +6,7 @@ import numpy as np
 import pytest
 from tabulate import tabulate
 
-from pogema import pogema_v0, AnimationMonitor, AnimationConfig
-
+from pogema import AnimationConfig, AnimationMonitor, SvgAnimation, pogema_v0
 from pogema.envs import ActionsSampler
 from pogema.grid import GridConfig
 from pogema.wrappers.persistence import PersistentWrapper
@@ -218,7 +217,7 @@ def test_persistent_env(num_steps=100):
     def state_repr(observations, rewards, terminates, truncates, infos):
         return np.concatenate([np.array(observations).flatten(), terminates, truncates, np.array(rewards), ])
 
-    for current_step in range(num_steps):
+    for _current_step in range(num_steps):
         actions = action_sampler.sample_actions(dim=env.unwrapped.get_num_agents())
         obs, reward, terminated, truncated, info = env.step(actions)
 
@@ -227,7 +226,7 @@ def test_persistent_env(num_steps=100):
             break
 
     # resetting the environment to the initial state using backward steps
-    for current_step in range(num_steps):
+    for _current_step in range(num_steps):
         if not env.step_back():
             break
 
@@ -259,7 +258,7 @@ def test_wrapper_attribute_forwarding():
         assert env.get_targets_xy() is not None
 
         with pytest.raises(AttributeError):
-            env.nonexistent_attribute_xyz
+            _ = env.nonexistent_attribute_xyz
 
 
 def test_wrapper_forwarding_persistent():
@@ -281,22 +280,6 @@ def test_wrapper_forwarding_animation():
 
     assert env.get_num_agents() == 2
     assert env.grid_config is not None
-
-
-def test_steps_per_second_throughput():
-    table = []
-    for on_target in ['finish', 'nothing', 'restart']:
-        for num_agents in [1, 32, 64]:
-            for size in [32, 64]:
-                gc = GridConfig(obs_radius=5, seed=42, max_episode_steps=1024,
-                              size=size, num_agents=num_agents, on_target=on_target)
-
-                start_time = time.monotonic()
-                run_episode(grid_config=gc)
-                end_time = time.monotonic()
-                steps_per_second = gc.max_episode_steps / (end_time - start_time)
-                table.append([on_target, num_agents, size, steps_per_second * gc.num_agents])
-    print('\n' + tabulate(table, headers=['on_target', 'num_agents', 'size', 'SPS (individual)'], tablefmt='grid'))
 
 
 def test_enable_animation_and_save(tmp_path):
@@ -373,3 +356,80 @@ def test_enable_animation_for_all_on_target_modes(tmp_path):
         svg_path = str(tmp_path / f'test_{on_target}.svg')
         env.save_animation(svg_path)
         assert os.path.exists(svg_path)
+
+
+def test_render_animation_returns_svg_animation():
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.enable_animation()
+    env.reset()
+    run_episode(env=env)
+
+    anim = env.render_animation()
+    assert isinstance(anim, SvgAnimation)
+    assert '<svg' in str(anim)
+    assert '<svg' in anim._repr_html_()
+    assert 'SvgAnimation(' in repr(anim)
+
+
+def test_render_animation_save(tmp_path):
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.enable_animation()
+    env.reset()
+    run_episode(env=env)
+
+    anim = env.render_animation()
+    nested_path = str(tmp_path / 'nested' / 'dirs' / 'out.svg')
+    anim.save(nested_path)
+    assert os.path.exists(nested_path)
+    with open(nested_path) as f:
+        assert '<svg' in f.read()
+
+
+def test_render_animation_without_enable_raises():
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.reset()
+    with pytest.raises(RuntimeError, match="Animation is not active"):
+        env.render_animation()
+
+
+def test_save_animation_creates_parent_dirs(tmp_path):
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.enable_animation()
+    env.reset()
+    run_episode(env=env)
+
+    svg_path = str(tmp_path / 'auto' / 'created' / 'render.svg')
+    env.save_animation(svg_path)
+    assert os.path.exists(svg_path)
+
+
+def test_render_animation_with_config():
+    gc = GridConfig(num_agents=2, size=6, obs_radius=2, density=0.3, seed=42, on_target='finish')
+    env = pogema_v0(gc)
+    env.enable_animation()
+    env.reset()
+    run_episode(env=env)
+
+    anim = env.render_animation(animation_config=AnimationConfig(egocentric_idx=0))
+    assert isinstance(anim, SvgAnimation)
+    assert '<svg' in str(anim)
+
+
+def test_steps_per_second_throughput():
+    table = []
+    for on_target in ['finish', 'nothing', 'restart']:
+        for num_agents in [1, 32, 64]:
+            for size in [32, 64]:
+                gc = GridConfig(obs_radius=5, seed=42, max_episode_steps=1024,
+                              size=size, num_agents=num_agents, on_target=on_target)
+
+                start_time = time.monotonic()
+                run_episode(grid_config=gc)
+                end_time = time.monotonic()
+                steps_per_second = gc.max_episode_steps / (end_time - start_time)
+                table.append([on_target, num_agents, size, steps_per_second * gc.num_agents])
+    print('\n' + tabulate(table, headers=['on_target', 'num_agents', 'size', 'SPS (individual)'], tablefmt='grid'))
