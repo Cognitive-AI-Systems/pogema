@@ -1,0 +1,80 @@
+site_name: POGEMA
+site_description: Partially-Observable Grid Environment for Multiple Agents
+repo_url: https://github.com/Cognitive-AI-Systems/pogema
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.highlight
+
+extra_css:
+  - stylesheets/pogema.css
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Key Concepts: getting-started/key-concepts.md
+  - Configuration:
+    - GridConfig: configuration/grid-config.md
+    - Custom Maps: configuration/custom-maps.md
+    - Collision Systems: configuration/collision-systems.md
+    - Observation Types: configuration/observation-types.md
+    - Seeding: configuration/seeding.md
+  - Environment:
+    - Task Modes: environment/modes.md
+    - API Reference: environment/api.md
+  - Wrappers:
+    - Overview: wrappers/overview.md
+    - Metrics: wrappers/metrics.md
+    - Animation: wrappers/animation.md
+  - Integrations:
+    - Gymnasium: integrations/gymnasium.md
+    - PettingZoo: integrations/pettingzoo.md
+    - SampleFactory: integrations/sample-factory.md
+  - Baseline:
+    - A* Policy: baseline/a-star.md
+  - Advanced:
+    - Custom Positions: advanced/custom-positions.md
+    - Lifelong MAPF: advanced/lifelong.md
+  - Tools:
+    - Map Editor: tools/map-editor.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+  - markdown-exec
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: python
+          class: python
+          validator: !!python/name:markdown_exec.validator
+          format: !!python/name:markdown_exec.formatter
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - tables
+  - attr_list
