@@ -5,8 +5,9 @@
 
 **Partially-Observable Grid Environment for Multiple Agents**
 
-[![CodeFactor](https://www.codefactor.io/repository/github/tviskaron/pogema/badge)](https://www.codefactor.io/repository/github/tviskaron/pogema)
+
 [![Downloads](https://static.pepy.tech/badge/pogema)](https://pepy.tech/project/pogema)
+[![Paper](https://img.shields.io/badge/Paper-ICLR%202025-1f4b99?logo=openreview&logoColor=white)](https://openreview.net/forum?id=6VgwE2tCRm)
 [![CI](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/CI.yml)
 [![CodeQL](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/codeql-analysis.yml) 
     
@@ -18,9 +19,13 @@ POGEMA stands for Partially-Observable Grid Environment for Multiple Agents. It 
 
 ## Installation
 
-Just install from PyPI:
+For now, install directly from github:
 
-```pip install pogema```
+```bash
+pip install git+https://github.com/Cognitive-AI-Systems/pogema.git
+```
+
+This is a temporary installation option while we are working on Pogema 2.0. The current PyPI package still contains the older version. Once Pogema 2.0 is fully ready, it will also be published on PyPI with a simpler installation command.
 
 ## Using Example
 
@@ -108,7 +113,6 @@ grid_config = GridConfig(num_agents=4,  # number of agents
 env = pogema_v0(grid_config=grid_config)
 env.reset()
 env.render()
-
 ```
 
 ### Custom maps

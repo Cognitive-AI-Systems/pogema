@@ -1,8 +1,8 @@
-import numpy as np
 from heapq import heappop, heappush
-from pogema import GridConfig, pogema_v0, AnimationMonitor
 
-# from pogema.animation import AnimationMonitor
+import numpy as np
+
+from pogema import GridConfig, pogema_v0
 
 INF = 1000000007
 
@@ -118,17 +118,15 @@ class DeterministicPolicy:
             self.agents[k].update_path(start, goal)
             next_node = self.agents[k].get_next_node()
             actions.append(self.actions[(next_node[0] - start[0], next_node[1] - start[1])])
-        for idx, action in enumerate(actions):
+        for idx, _action in enumerate(actions):
             if self._rnd.random() < self._random_rate:
                 actions[idx] = self._rnd.randint(1, 4)
         return actions
 
 
-def run_policy(gc: GridConfig, save_animation=False):
+def run_policy(gc: GridConfig):
     policy = DeterministicPolicy()
     env = pogema_v0(grid_config=gc)
-    if save_animation:
-        env = AnimationMonitor(env)
 
     while True:
         obs, info = env.reset()
@@ -142,15 +140,15 @@ def run_policy(gc: GridConfig, save_animation=False):
 
 def test_life_long():
     gc = GridConfig(num_agents=20, size=8, obs_radius=4, seed=42, max_episode_steps=64, on_target='restart')
-    results_generator = run_policy(gc, save_animation=False)
+    results_generator = run_policy(gc)
 
     metrics = results_generator.__next__()
     assert np.isclose(metrics['avg_throughput'], 1.671875)
     metrics = results_generator.__next__()
     assert np.isclose(metrics['avg_throughput'], 1.609375)
-    
+
     gc = GridConfig(num_agents=24, size=8, obs_radius=4, seed=43, max_episode_steps=64, on_target='restart')
-    results_generator = run_policy(gc, save_animation=False)
+    results_generator = run_policy(gc)
 
     metrics = results_generator.__next__()
     assert np.isclose(metrics['avg_throughput'], 0.4375)
@@ -158,7 +156,7 @@ def test_life_long():
 
 def test_disappearing():
     gc = GridConfig(num_agents=20, size=8, obs_radius=2, seed=42, density=0.2, max_episode_steps=32, on_target='finish')
-    results_generator = run_policy(gc, save_animation=False)
+    results_generator = run_policy(gc)
 
     metrics = results_generator.__next__()
     assert np.isclose(metrics['ep_length'], 22.95)
@@ -173,7 +171,7 @@ def test_disappearing():
 
 def test_non_disappearing():
     gc = GridConfig(num_agents=4, size=5, obs_radius=2, seed=3, density=0.2, max_episode_steps=32, on_target='nothing')
-    results_generator = run_policy(gc, save_animation=False)
+    results_generator = run_policy(gc)
 
     metrics = results_generator.__next__()
     assert np.isclose(metrics['ep_length'], 21)
@@ -186,7 +184,7 @@ def test_non_disappearing():
     assert np.isclose(metrics['ISR'], 1.0)
 
     gc = GridConfig(num_agents=7, size=5, obs_radius=2, seed=3, density=0.2, max_episode_steps=32, on_target='nothing')
-    results_generator = run_policy(gc, save_animation=False)
+    results_generator = run_policy(gc)
 
     metrics = results_generator.__next__()
     assert np.isclose(metrics['ep_length'], 32)

@@ -1,7 +1,8 @@
-import numpy as np
-from pogema import GridConfig
-
 from heapq import heappop, heappush
+
+import numpy as np
+
+from pogema import GridConfig
 
 INF = 1e7
 
@@ -23,7 +24,8 @@ class GridMemory:
         m = self._memory
         r = self._memory.shape[0]
         self._memory = np.zeros(shape=(r * 2 + 1, r * 2 + 1))
-        assert self._try_to_insert(r, r, m, self._memory)
+        if not self._try_to_insert(r, r, m, self._memory):
+            raise RuntimeError("GridMemory invariant violation: failed to copy data into expanded memory")
 
     def update(self, x, y, obstacles):
         while True:
@@ -41,7 +43,7 @@ class GridMemory:
 
 
 class Node:
-    def __init__(self, coord: (int, int) = (INF, INF), g: int = 0, h: int = 0):
+    def __init__(self, coord: tuple[int, int] = (INF, INF), g: int = 0, h: int = 0):
         self.i, self.j = coord
         self.g = g
         self.h = h
@@ -99,11 +101,14 @@ class AStarAgent:
         self._rnd = np.random.default_rng(seed)
 
     def act(self, obs):
-        xy, target_xy, obstacles, agents = obs['xy'], obs['target_xy'], obs['obstacles'], obs['agents']
+        xy, target_xy, obstacles, _ = obs['xy'], obs['target_xy'], obs['obstacles'], obs['agents']
 
 
         if self._saved_xy is not None and h(self._saved_xy, xy) > 1:
-            raise IndexError("Agent moved more than 1 step. Please, call clear_state method before new episode.")
+            raise IndexError(
+                "Agent moved more than 1 step between calls to act(). "
+                "This usually means a new episode started. Call agent.clear_state() before each new episode."
+            )
         if self._saved_xy is not None and h(self._saved_xy, xy) == 0 and xy != target_xy:
             return self._rnd.integers(len(self._moves))
         self._gm.update(*xy, obstacles)

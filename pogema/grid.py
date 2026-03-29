@@ -1,12 +1,17 @@
-from copy import deepcopy
 import warnings
+from copy import deepcopy
 
 import numpy as np
 
-from pogema.generator import generate_obstacles, generate_positions_and_targets_fast, \
-    get_components, generate_from_possible_positions
+from pogema.generator import (
+    generate_from_possible_positions,
+    generate_obstacles,
+    generate_positions_and_targets_fast,
+    get_components,
+)
+
 from .grid_config import GridConfig
-from .grid_registry import in_registry, get_grid
+from .grid_registry import get_grid, in_registry
 from .utils import render_grid
 
 
@@ -31,7 +36,7 @@ class Grid:
                 self.finishes_xy = [sequence[0] for sequence in grid_config.targets_xy]
             else:
                 self.finishes_xy = grid_config.targets_xy
-                
+
             if len(self.starts_xy) != len(self.finishes_xy):
                 raise IndexError("Can't create task. Please provide agents_xy and targets_xy of the same size.")
             if grid_config.num_agents > len(self.starts_xy):
@@ -64,8 +69,9 @@ class Grid:
                 self.starts_xy, self.finishes_xy = generate_positions_and_targets_fast(self.obstacles, self.config)
 
         if not self.starts_xy or not self.finishes_xy or len(self.starts_xy) != len(self.finishes_xy):
-            raise OverflowError(
-                "Can't create task. Please check grid grid_config, especially density, num_agent and map.")
+            raise ValueError(
+                "Can't create task. Not enough free cells to place all agents and targets. "
+                "Try reducing density, num_agents, or using a larger map.")
 
         if add_artificial_border:
             self.add_artificial_border()
@@ -215,12 +221,31 @@ class Grid:
         result[c.obs_radius - dx, c.obs_radius - dy] = 1
         return result.astype(np.float32)
 
-    def render(self, mode='human'):
-        render_grid(self.obstacles, self.positions_xy, self.finishes_xy, self.is_active, mode=mode)
+    def render(self, mode='human', border='thin'):
+        gc = self.config
+        r = gc.obs_radius
+
+        if border == 'none':
+            trim = r
+        elif border == 'full':
+            trim = 0
+        else:
+            trim = max(r - 1, 0)
+
+        if trim == 0:
+            obs = self.obstacles.copy()
+            agents = deepcopy(self.positions_xy)
+            targets = deepcopy(self.finishes_xy)
+        else:
+            obs = self.obstacles[trim:-trim, trim:-trim].copy()
+            agents = [[x - trim, y - trim] for x, y in self.positions_xy]
+            targets = [[x - trim, y - trim] for x, y in self.finishes_xy]
+
+        render_grid(obs, agents, targets, self.is_active, mode=mode)
 
     def move_agent_to_cell(self, agent_id, x, y):
         if self.positions[self.positions_xy[agent_id]] == self.config.FREE:
-            raise KeyError("Agent {} is not in the map".format(agent_id))
+            raise ValueError(f"Agent {agent_id} is not in the map")
         self.positions[self.positions_xy[agent_id]] = self.config.FREE
         if self.obstacles[x, y] != self.config.FREE or self.positions[x, y] != self.config.FREE:
             raise ValueError(f"Can't force agent to blocked position {x} {y}")
@@ -251,9 +276,6 @@ class Grid:
     def on_goal(self, agent_id):
         return self.positions_xy[agent_id] == self.finishes_xy[agent_id]
 
-    def is_active(self, agent_id):
-        return self.is_active[agent_id]
-
     def hide_agent(self, agent_id):
         if not self.is_active[agent_id]:
             return False
@@ -269,7 +291,7 @@ class Grid:
 
         self.is_active[agent_id] = True
         if self.positions[self.positions_xy[agent_id]] == self.config.OBSTACLE:
-            raise KeyError("The cell is already occupied")
+            raise ValueError("The cell is already occupied")
         self.positions[self.positions_xy[agent_id]] = self.config.OBSTACLE
         return True
 

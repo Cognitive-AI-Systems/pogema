@@ -1,4 +1,4 @@
-from gymnasium import Wrapper
+from pogema.wrappers.base import PogemaWrapper
 
 
 class AgentState:
@@ -30,7 +30,24 @@ class AgentState:
         return str([self.x, self.y, self.tx, self.ty, self.step, self.active])
 
 
-class PersistentWrapper(Wrapper):
+def agent_state_to_full_list(agent_states, num_steps):
+    result = []
+    current_state_id = 0
+    # going over num_steps + 1, to handle last step
+    for episode_step in range(num_steps + 1):
+        if current_state_id < len(agent_states) - 1 and agent_states[current_state_id + 1].step == episode_step:
+            current_state_id += 1
+        result.append(agent_states[current_state_id])
+    return result
+
+
+def decompress_history(history):
+    max_steps = max([agent_states[-1].step for agent_states in history])
+    result = [agent_state_to_full_list(agent_states, max_steps) for agent_states in history]
+    return result
+
+
+class PersistentWrapper(PogemaWrapper):
     def __init__(self, env, xy_offset=None):
         super().__init__(env)
         self._step = None
@@ -40,8 +57,8 @@ class PersistentWrapper(Wrapper):
     def step(self, action):
         result = self.env.step(action)
         self._step += 1
-        for agent_idx in range(self.get_num_agents()):
-            agent_state = self._get_agent_state(self.grid, agent_idx)
+        for agent_idx in range(self.unwrapped.get_num_agents()):
+            agent_state = self._get_agent_state(self.unwrapped.grid, agent_idx)
             if agent_state != self._agent_states[agent_idx][-1]:
                 self._agent_states[agent_idx].append(agent_state)
 
@@ -51,19 +68,19 @@ class PersistentWrapper(Wrapper):
         if self._step <= 0:
             return False
         self._step -= 1
-        self.set_elapsed_steps(self._step)
-        for idx in reversed(range(self.get_num_agents())):
+        self.env.set_elapsed_steps(self._step)
+        for idx in reversed(range(self.unwrapped.get_num_agents())):
 
             if self._step < self._agent_states[idx][-1].step:
                 self._agent_states[idx].pop()
                 state = self._agent_states[idx][-1]
 
                 if state.active:
-                    self.grid.show_agent(idx)
+                    self.unwrapped.grid.show_agent(idx)
                 else:
-                    self.grid.hide_agent(idx)
-                self.grid.move_agent_to_cell(idx, state.x, state.y)
-                self.grid.finishes_xy[idx] = state.tx, state.ty
+                    self.unwrapped.grid.hide_agent(idx)
+                self.unwrapped.grid.move_agent_to_cell(idx, state.x, state.y)
+                self.unwrapped.grid.finishes_xy[idx] = state.tx, state.ty
 
         return True
 
@@ -84,30 +101,13 @@ class PersistentWrapper(Wrapper):
         self._step = 0
 
         self._agent_states = []
-        for agent_idx in range(self.get_num_agents()):
-            self._agent_states.append([self._get_agent_state(self.grid, agent_idx)])
+        for agent_idx in range(self.unwrapped.get_num_agents()):
+            self._agent_states.append([self._get_agent_state(self.unwrapped.grid, agent_idx)])
 
-        return result
-
-    @staticmethod
-    def agent_state_to_full_list(agent_states, num_steps):
-        result = []
-        current_state_id = 0
-        # going over num_steps + 1, to handle last step
-        for episode_step in range(num_steps + 1):
-            if current_state_id < len(agent_states) - 1 and agent_states[current_state_id + 1].step == episode_step:
-                current_state_id += 1
-            result.append(agent_states[current_state_id])
-        return result
-
-    @classmethod
-    def decompress_history(cls, history):
-        max_steps = max([agent_states[-1].step for agent_states in history])
-        result = [cls.agent_state_to_full_list(agent_states, max_steps) for agent_states in history]
         return result
 
     def get_full_history(self):
-        return [self.agent_state_to_full_list(agent_states, self._step) for agent_states in self._agent_states]
+        return [agent_state_to_full_list(agent_states, self._step) for agent_states in self._agent_states]
 
     def get_history(self):
         return self._agent_states

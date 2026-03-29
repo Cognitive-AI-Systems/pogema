@@ -1,7 +1,12 @@
-from gymnasium.wrappers import TimeLimit
+from pogema.wrappers.base import PogemaWrapper
 
 
-class MultiTimeLimit(TimeLimit):
+class MultiTimeLimit(PogemaWrapper):
+    def __init__(self, env, max_episode_steps: int):
+        super().__init__(env)
+        self._max_episode_steps = max_episode_steps
+        self._elapsed_steps = None
+
     def step(self, action):
         observation, reward, terminated, truncated, info = self.env.step(action)
         self._elapsed_steps += 1
@@ -9,8 +14,11 @@ class MultiTimeLimit(TimeLimit):
             truncated = [True] * self.get_num_agents()
         return observation, reward, terminated, truncated, info
 
-    def set_elapsed_steps(self, elapsed_steps):
-        if not self.grid_config.persistent:
-            raise ValueError("Cannot set elapsed steps for non-persistent environment!")
-        assert elapsed_steps >= 0
+    def reset(self, **kwargs):
+        self._elapsed_steps = 0
+        return self.env.reset(**kwargs)
+
+    def set_elapsed_steps(self, elapsed_steps: int) -> None:
+        if elapsed_steps < 0:
+            raise ValueError(f"elapsed_steps must be non-negative, got {elapsed_steps}")
         self._elapsed_steps = elapsed_steps

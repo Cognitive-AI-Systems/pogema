@@ -3,17 +3,17 @@ import typing
 from dataclasses import dataclass
 
 from pogema import GridConfig
-from pogema.svg_animation.svg_objects import Line, RectangleHref, Animation, Circle, Rectangle
+from pogema.svg_animation.svg_objects import Animation, Circle, Line, Rectangle, RectangleHref
 
 
 @dataclass
 class AnimationConfig:
     directory: str = 'renders/'
     show_agents: bool = True
-    egocentric_idx: typing.Optional[int] = None
-    static_frame_idx: typing.Optional[int] = None
-    uid: typing.Optional[str] = None
-    save_every_idx_episode: typing.Optional[int] = 1
+    egocentric_idx: int | None = None
+    static_frame_idx: int | None = None
+    uid: str | None = None
+    save_every_idx_episode: int | None = 1
     show_grid_lines: bool = True
 
 
@@ -84,7 +84,8 @@ class Drawing:
              width="{scaled_width}" height="{scaled_height}" viewBox="{" ".join(map(str, view_box))}">'''
 
         definitions = f'''
-        <rect id="obstacle" width="{self.svg_settings.r * 2}" height="{self.svg_settings.r * 2}" fill="{self.svg_settings.obstacle_color}" rx="{self.svg_settings.rx}"/>
+        <rect id="obstacle" width="{self.svg_settings.r * 2}" height="{self.svg_settings.r * 2}"
+            fill="{self.svg_settings.obstacle_color}" rx="{self.svg_settings.rx}"/>
         <style>
         .line {{stroke: {self.svg_settings.obstacle_color}; stroke-width: {self.svg_settings.stroke_width};}}
         .agent {{r: {self.svg_settings.r};}}
@@ -148,7 +149,7 @@ class AnimationDrawer:
     @staticmethod
     def check_in_radius(x1, y1, x2, y2, r) -> bool:
         return x2 - r <= x1 <= x2 + r and y2 - r <= y1 <= y2 + r
-    
+
     @staticmethod
     def create_grid_lines(grid_holder: GridHolder, render_width, render_height):
         gh = grid_holder
@@ -182,7 +183,7 @@ class AnimationDrawer:
         )
 
         return result
-        
+
     def create_frame_view(self, grid_holder):
         gh: GridHolder = grid_holder
         frame_idx = gh.config.static_frame_idx
@@ -288,7 +289,7 @@ class AnimationDrawer:
             x_path = []
             y_path = []
 
-            for step_idx, state in enumerate(gh.history[target_idx]):
+            for _step_idx, state in enumerate(gh.history[target_idx]):
                 x, y = state.get_target_xy()
                 x_path.append(str(gh.svg_settings.draw_start + y * gh.svg_settings.scale_size))
                 y_path.append(str(-gh.svg_settings.draw_start + -(gh.width - x - 1) * gh.svg_settings.scale_size))
@@ -332,7 +333,7 @@ class AnimationDrawer:
         result = []
         seen = set()
 
-        for step_idx, agent_state in enumerate(gh.history[gh.config.egocentric_idx][:frame_idx + 1]):
+        for _step_idx, agent_state in enumerate(gh.history[gh.config.egocentric_idx][:frame_idx + 1]):
             ego_x, ego_y = agent_state.get_xy()
             for i in range(gh.height):
                 for j in range(gh.width):
@@ -358,7 +359,7 @@ class AnimationDrawer:
                     result.append(RectangleHref(**obs_settings))
 
         return result
-                        
+
     def animate_obstacles(self, obstacles, grid_holder):
         gh: GridHolder = grid_holder
         obstacle_idx = 0
@@ -370,7 +371,7 @@ class AnimationDrawer:
                     continue
                 opacity = []
                 seen = set()
-                for step_idx, agent_state in enumerate(gh.history[gh.config.egocentric_idx]):
+                for _step_idx, agent_state in enumerate(gh.history[gh.config.egocentric_idx]):
                     ego_x, ego_y = agent_state.get_xy()
                     if self.check_in_radius(x, y, ego_x, ego_y, grid_holder.obs_radius):
                         seen.add((x, y))
@@ -415,7 +416,7 @@ class AnimationDrawer:
         gh: GridHolder = grid_holder
         ego_idx = grid_holder.config.egocentric_idx
         frame_idx = grid_holder.config.static_frame_idx
-        
+
         static_positions = [state[frame_idx].get_xy() for state in grid_holder.history]
         for idx, (x, y) in enumerate(static_positions):
             circle_settings = {

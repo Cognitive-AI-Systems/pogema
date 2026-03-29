@@ -1,8 +1,7 @@
 import sys
+from typing import Literal
 
 from pydantic import BaseModel
-
-from typing_extensions import Literal
 
 
 class AgentsTargetsSizeError(Exception):
@@ -32,12 +31,14 @@ def check_grid(obstacles, agents_xy, targets_xy):
     for start_xy, finish_xy in zip(agents_xy, targets_xy):
         s_x, s_y = start_xy
         if obstacles[s_x, s_y]:
-            raise KeyError(f'Cell is {s_x, s_y} occupied by obstacle.')
+            raise ValueError(f'Cell ({s_x}, {s_y}) is occupied by an obstacle.')
         f_x, f_y = finish_xy
         if obstacles[f_x, f_y]:
-            raise KeyError(f'Cell is {f_x, f_y} occupied by obstacle.')
+            raise ValueError(f'Cell ({f_x}, {f_y}) is occupied by an obstacle.')
 
-    # todo check connectivity of starts and finishes
+    # Connectivity check not implemented: GridLifeLong already warns on unreachable
+    # targets, and adding a mandatory check to Grid would be a breaking change for
+    # users who intentionally place agents/targets in disconnected components.
 
 
 def render_grid(obstacles, positions_xy=None, targets_xy=None, is_active=None, mode='human'):
@@ -50,10 +51,11 @@ def render_grid(obstacles, positions_xy=None, targets_xy=None, is_active=None, m
             is_active = [True] * len(positions_xy)
         else:
             is_active = []
-    from io import StringIO
     import string
-    from gymnasium import utils as gym_utils
     from contextlib import closing
+    from io import StringIO
+
+    from gymnasium import utils as gym_utils
 
     outfile = StringIO() if mode == 'ansi' else sys.stdout
     chars = string.digits + string.ascii_letters + string.punctuation
@@ -73,9 +75,9 @@ def render_grid(obstacles, positions_xy=None, targets_xy=None, is_active=None, m
                     out += str(
                         gym_utils.colorize('|' + chars[finish_id % len(chars)] + '|', 'white', highlight=False))
                 else:
-                    out += str(gym_utils.colorize(str(' . '), 'white', highlight=False))
+                    out += str(gym_utils.colorize(' . ', 'white', highlight=False))
             else:
-                out += str(gym_utils.colorize(str('   '), 'cyan', bold=False, highlight=True))
+                out += str(gym_utils.colorize('   ', 'cyan', bold=False, highlight=True))
         out += '\n'
         outfile.write(out)
 
