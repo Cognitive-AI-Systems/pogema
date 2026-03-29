@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pogema Editor</title>
+<script>
+  // Apply theme before first paint: sessionStorage overrides URL param
+  (function() {
+    var saved = sessionStorage.getItem('pogema-editor-theme');
+    var isNight = saved ? saved === 'night' : new URLSearchParams(window.location.search).get('theme') === 'slate';
+    if (isNight) document.documentElement.classList.add('night');
+  })();
+</script>
+<style>
+  :root {
+    --move-dur: 0.12s;
+    --grid-line-color: #84a1ae;
+    --grid-obstacle-color: #84a1ae;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--fg);
+    transition: background 0.4s, color 0.4s;
+  }
+  #grid-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 24px;
+    background: var(--bg);
+  }
+  svg { overflow: visible; }
+  svg text { pointer-events: none; user-select: none; }
+  .grid-line {
+    stroke: var(--grid-line-color);
+    stroke-width: 10;
+    pointer-events: none;
+    transition: stroke 0.4s;
+  }
+  .obstacle {
+    fill: var(--grid-obstacle-color);
+    transition: fill 0.4s;
+  }
+  .cell-hit { fill: transparent; }
+  .agent-circle { cursor: grab; transition: cx var(--move-dur) linear, cy var(--move-dur) linear, r 0.15s ease; }
+  .target-circle { fill: none; stroke-width: 10; }
+  .dragging { cursor: grabbing !important; opacity: 0.72; }
+  .agent-circle, .target-circle, .target-hit { transition: cx var(--move-dur) linear, cy var(--move-dur) linear; }
+  .agent-label {
+    font-size: 28px;
+    font-weight: bold;
+    fill: #fff;
+    text-anchor: middle;
+    dominant-baseline: central;
+    transition: x var(--move-dur) linear, y var(--move-dur) linear;
+  }
+  .selected-ring,
+  .target-select-ring {
+    fill: none;
+    stroke: var(--card-selected);
+    stroke-width: 8;
+    stroke-dasharray: 20 8;
+    pointer-events: none;
+    transition: cx var(--move-dur) linear, cy var(--move-dur) linear;
+    animation: dash-spin 1s linear infinite;
+  }
+  .selected-ring.active-focus,
+  .target-select-ring.active-focus {
+    stroke-width: 10;
+    stroke-dasharray: none;
+    animation: none;
+  }
+  @keyframes dash-spin { to { stroke-dashoffset: -56; } }
+
+  #left-panel,
+  #panel {
+    width: 280px;
+    padding: 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--panel-bg);
+    border-color: var(--panel-border);
+    color: var(--fg);
+    transition: background 0.4s, border-color 0.4s, color 0.4s;
+  }
+  #left-panel { border-right: 2px solid var(--panel-border); }
+  #panel { border-left: 2px solid var(--panel-border); }
+
+  .panel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--section-border);
+  }
+  .panel-section:first-child { padding-top: 0; border-top: none; }
+  .panel-section.tight { gap: 8px; }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  h2 {
+    font-size: 16px;
+    color: #e94560;
+    margin: 0;
+  }
+  .panel-title {
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .agent-title-group {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .agent-count {
+    font-size: 12px;
+    opacity: 0.72;
+  }
+  .panel-note {
+    font-size: 11px;
+    opacity: 0.72;
+    text-align: right;
+  }
+
+  .gen-row input[type=number] {
+    width: 100%;
+    padding: 7px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--input-border);
+    font-size: 12px;
+    text-align: center;
+    background: var(--input-bg);
+    color: var(--fg);
+  }
+
+  .chip-row,
+  .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .size-chip,
+  .panel-btn,
+  .tool-btn,
+  #theme-toggle,
+  #add-agent,
+  .agent-icon-btn {
+    border: 2px solid var(--btn-border);
+    border-radius: 8px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, opacity 0.2s;
+  }
+  .size-chip,
+  .tool-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .size-chip { min-width: 58px; }
+  .tool-btn { flex: 1 1 46%; }
+  .panel-btn {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+  .size-chip:hover:not(:disabled),
+  .panel-btn:hover:not(:disabled),
+  .tool-btn:hover:not(:disabled),
+  #theme-toggle:hover,
+  #add-agent:hover:not(:disabled),
+  .agent-icon-btn:hover:not(:disabled) {
+    border-color: var(--btn-hover);
+    background: var(--btn-hover-bg);
+  }
+  button:disabled { opacity: 0.38; cursor: default; }
+
+  .gen-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+  .gen-row label {
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 56px;
+    white-space: nowrap;
+  }
+  .gen-row input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent-range); }
+  .gen-row input[type=number] { width: 66px; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .resize-pad {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+  }
+  .resize-pad .tool-btn {
+    min-height: 44px;
+    width: 100%;
+    padding: 7px 8px;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .resize-mode-toggle {
+    font-size: 22px !important;
+    font-weight: 800;
+    transition: none;
+  }
+  .stat-card {
+    border-radius: 8px;
+    padding: 9px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: var(--stat-bg);
+    border: 1px solid var(--stat-border);
+  }
+  .stat-label {
+    font-size: 11px;
+    opacity: 0.72;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .stat-value {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  #agent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .agent-card {
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    border: 2px solid transparent;
+    transition: border-color 0.15s, background 0.4s, box-shadow 0.4s;
+  }
+  .agent-card.selected { border-color: var(--card-selected); }
+  .agent-card:hover { border-color: var(--card-hover); }
+  .agent-inspector {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    cursor: default;
+  }
+  .agent-inspector:hover { border-color: transparent; }
+  .agent-inspector-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .agent-inspector-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .agent-inspector-title {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .agent-inspector-meta {
+    font-size: 12px;
+    opacity: 0.72;
+  }
+  .agent-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .agent-inspector-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 10px;
+    align-items: baseline;
+    font-size: 13px;
+  }
+  .agent-inspector-grid strong {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    opacity: 0.72;
+    text-transform: uppercase;
+  }
+  .agent-dot-wrapper {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .agent-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    cursor: pointer;
+  }
+  .agent-color-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+  }
+  .mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mode-icon {
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .mode-icon:hover { opacity: 0.8 !important; }
+  .agent-info {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .agent-info strong { font-size: 14px; }
+
+  #theme-toggle {
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  #add-agent,
+  .agent-icon-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    line-height: 1;
+    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #instructions,
+  #workflow-instructions {
+    font-size: 12px;
+    color: var(--instructions-color);
+    line-height: 1.55;
+  }
+  #instructions kbd {
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    background: var(--kbd-bg);
+    color: var(--fg);
+    transition: background 0.4s;
+  }
+
+  body.day {
+    --bg: #ffffff;
+    --fg: #222;
+    --panel-bg: #f7f8fa;
+    --panel-border: #d8d1c7;
+    --section-border: #d8d1c7;
+    --btn-border: #c7d1d7;
+    --btn-hover: #ffd700;
+    --btn-hover-bg: rgba(255, 215, 0, 0.12);
+    --card-bg: #fff;
+    --card-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --stat-bg: #f7f8fa;
+    --stat-border: #d8d1c7;
+    --input-border: #c9c1b6;
+    --input-bg: #fff;
+    --kbd-bg: #d8ddd9;
+    --status-bg: #eef1f3;
+    --grid-line-color: #84a1ae;
+    --grid-obstacle-color: #84a1ae;
+    --accent-range: #e94560;
+    --card-selected: #ffd700;
+    --card-hover: #e94560;
+    --instructions-color: #888;
+  }
+  body.day .stat-card .stat-label { opacity: 0.9; }
+
+  html.night body,
+  body.night {
+    --bg: #202028;
+    --fg: #f2f2f2;
+    --panel-bg: #262730;
+    --panel-border: #3c5360;
+    --section-border: #344754;
+    --btn-border: #4a6474;
+    --btn-hover: #FFD700;
+    --btn-hover-bg: rgba(255, 215, 0, 0.1);
+    --card-bg: #2c3340;
+    --card-shadow: 0 1px 5px rgba(0,0,0,0.25);
+    --stat-bg: #2a3038;
+    --stat-border: transparent;
+    --input-border: #4a6474;
+    --input-bg: #232831;
+    --kbd-bg: #2a3038;
+    --status-bg: #262d36;
+    --grid-line-color: #4d839a;
+    --grid-obstacle-color: #4d839a;
+    --accent-range: #d63066;
+    --card-selected: #FFD700;
+    --card-hover: #d63066;
+    --instructions-color: #b8ced9;
+  }
+
+  @media (max-width: 1200px) {
+    #left-panel,
+    #panel { width: 250px; }
+  }
+
+  @media (max-width: 980px) {
+    body {
+      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+      overflow: auto;
+    }
+    #left-panel,
+    #panel {
+      width: 100%;
+      border: none;
+    }
+    #left-panel { border-bottom: 2px solid; }
+    #panel { border-top: 2px solid; }
+    #grid-container {
+      min-height: 55vh;
+      order: 2;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="left-panel">
+  <div class="panel-section">
+    <div class="section-head">
+      <h2>Map Size</h2>
+    </div>
+    <div class="resize-pad" id="resize-controls">
+      <button class="tool-btn" data-resize-direction="top-left" title="Resize top-left corner">↖</button>
+      <button class="tool-btn" data-resize-direction="top" title="Resize top edge">↑</button>
+      <button class="tool-btn" data-resize-direction="top-right" title="Resize top-right corner">↗</button>
+      <button class="tool-btn" data-resize-direction="left" title="Resize left edge">←</button>
+      <button id="resize-mode-toggle" class="tool-btn resize-mode-toggle" title="Toggle grow or shrink mode">+</button>
+      <button class="tool-btn" data-resize-direction="right" title="Resize right edge">→</button>
+      <button class="tool-btn" data-resize-direction="bottom-left" title="Resize bottom-left corner">↙</button>
+      <button class="tool-btn" data-resize-direction="bottom" title="Resize bottom edge">↓</button>
+      <button class="tool-btn" data-resize-direction="bottom-right" title="Resize bottom-right corner">↘</button>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="section-head">
+      <h2>Quick Sizes</h2>
+    </div>
+    <div class="chip-row" id="size-presets">
+      <button class="size-chip" data-rows="8" data-cols="8">8×8</button>
+      <button class="size-chip" data-rows="16" data-cols="16">16×16</button>
+      <button class="size-chip" data-rows="32" data-cols="32">32×32</button>
+      <!-- <button class="size-chip" data-rows="64" data-cols="64">64×64</button> -->
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="section-head">
+      <h2>Obstacles</h2>
+    </div>
+    <div class="action-row">
+      <button id="btn-clear-obstacles" class="tool-btn">Clear</button>
+      <button id="btn-randomize" class="tool-btn">Randomize</button>
+    </div>
+    <div class="gen-row">
+      <label>Density</label>
+      <input type="range" id="density-slider" min="0" max="70" value="18">
+      <input type="number" id="density-input" min="0" max="70" value="18">
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Size</span>
+        <span class="stat-value" id="stat-size">16×16</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Obstacles</span>
+        <span class="stat-value" id="stat-obstacles">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Free Cells</span>
+        <span class="stat-value" id="stat-free">256</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Obstacle %</span>
+        <span class="stat-value" id="stat-density">0.0%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div id="workflow-instructions">
+      <strong>Workflow</strong><br>
+      Set map size, randomize or clear obstacles, edit them, generate agents and targets, then copy the Pogema snippet.
+    </div>
+  </div>
+
+</div>
+
+<div id="grid-container"></div>
+
+<div id="panel">
+  <div class="section-head">
+    <h2>Pogema Editor</h2>
+    <button id="theme-toggle" title="Toggle theme">&#9790;</button>
+  </div>
+  <div class="section-head">
+    <div class="agent-title-group">
+      <span class="panel-title">Agents</span>
+      <span id="agent-count" class="agent-count">0</span>
+    </div>
+    <div class="agent-header-actions">
+      <button id="remove-agent" class="agent-icon-btn remove" title="Remove selected agent">&#8722;</button>
+      <button id="add-agent" title="Add agent">+</button>
+      <button id="toggle-numbering" class="agent-icon-btn" title="Toggle agent numbering">#</button>
+      <button id="toggle-selection" class="agent-icon-btn" title="Toggle selection rings">&#9675;</button>
+    </div>
+  </div>
+  <div id="agent-list"></div>
+  <div id="instructions">
+    <strong>Controls</strong><br>
+    <kbd>Tab</kbd> / <kbd>Shift+Tab</kbd> — cycle agents<br>
+    <kbd>Space</kbd> — toggle agent / target<br>
+    <kbd>0</kbd>-<kbd>9</kbd> — select agent by ID<br>
+    <kbd>+</kbd> / <kbd>-</kbd> — add / remove agent<br>
+    <kbd>Arrows</kbd> / <kbd>HJKL</kbd> — move<br>
+    <kbd>Drag</kbd> agents or targets with the mouse
+  </div>
+  <div class="panel-section tight">
+    <h2>Generate agents</h2>
+    <div class="gen-row">
+      <label>Agents</label>
+      <input type="range" id="agent-count-slider" min="1" max="16" value="8">
+      <input type="number" id="agent-count-input" min="1" max="16" value="8">
+    </div>
+    <button id="btn-generate" class="panel-btn primary">Generate Agents &amp; Targets</button>
+  </div>
+
+  <div class="panel-section tight">
+    <button id="copy-pogema" class="panel-btn accent">&#128203; Copy Pogema Snippet</button>
+    <button id="download-svg" class="panel-btn">&#10515; Download SVG</button>
+  </div>
+</div>
+
+<datalist id="agent-colors">
+  <option>#c1433c</option>
+  <option>#2e6f9e</option>
+  <option>#6e81af</option>
+  <option>#00b9c8</option>
+  <option>#72d5c8</option>
+  <option>#0ea08c</option>
+  <option>#8f7b66</option>
+</datalist>
+
+<script>
+(function() {
+  const CELL = 100;
+  const RADIUS = 35;
+  const CORNER = 15;
+  const COLORS = ['#c1433c', '#2e6f9e', '#6e81af', '#00b9c8', '#72d5c8', '#0ea08c', '#8f7b66'];
+  const DIR = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] };
+  const RESIZE_GLYPHS = {
+    add: {
+      'top-left': '↖',
+      top: '↑',
+      'top-right': '↗',
+      left: '←',
+      right: '→',
+      'bottom-left': '↙',
+      bottom: '↓',
+      'bottom-right': '↘'
+    },
+    remove: {
+      'top-left': '↘',
+      top: '↓',
+      'top-right': '↙',
+      left: '→',
+      right: '←',
+      'bottom-left': '↗',
+      bottom: '↑',
+      'bottom-right': '↖'
+    }
+  };
+  const RESIZE_ACTIONS = {
+    'add-top': { rowsDelta: 1, colsDelta: 0, rowOffset: 1, colOffset: 0 },
+    'remove-top': { rowsDelta: -1, colsDelta: 0, rowOffset: -1, colOffset: 0 },
+    'add-bottom': { rowsDelta: 1, colsDelta: 0, rowOffset: 0, colOffset: 0 },
+    'remove-bottom': { rowsDelta: -1, colsDelta: 0, rowOffset: 0, colOffset: 0 },
+    'add-left': { rowsDelta: 0, colsDelta: 1, rowOffset: 0, colOffset: 1 },
+    'remove-left': { rowsDelta: 0, colsDelta: -1, rowOffset: 0, colOffset: -1 },
+    'add-right': { rowsDelta: 0, colsDelta: 1, rowOffset: 0, colOffset: 0 },
+    'remove-right': { rowsDelta: 0, colsDelta: -1, rowOffset: 0, colOffset: 0 },
+    'add-top-left': { rowsDelta: 1, colsDelta: 1, rowOffset: 1, colOffset: 1 },
+    'remove-top-left': { rowsDelta: -1, colsDelta: -1, rowOffset: -1, colOffset: -1 },
+    'add-top-right': { rowsDelta: 1, colsDelta: 1, rowOffset: 1, colOffset: 0 },
+    'remove-top-right': { rowsDelta: -1, colsDelta: -1, rowOffset: -1, colOffset: 0 },
+    'add-bottom-left': { rowsDelta: 1, colsDelta: 1, rowOffset: 0, colOffset: 1 },
+    'remove-bottom-left': { rowsDelta: -1, colsDelta: -1, rowOffset: 0, colOffset: -1 },
+    'add-bottom-right': { rowsDelta: 1, colsDelta: 1, rowOffset: 0, colOffset: 0 },
+    'remove-bottom-right': { rowsDelta: -1, colsDelta: -1, rowOffset: 0, colOffset: 0 }
+  };
+  const PAD = CELL / 2;
+  const NS = 'http://www.w3.org/2000/svg';
+  const MOVE_INTERVAL = 120;
+  const MAX_DIMENSION = 64;
+  const MIN_DIMENSION = 2;
+
+  let ROWS = 16;
+  let COLS = 16;
+  const obstacles = new Set();
+  const agents = [];
+  let selectedAgent = null;
+  let selectionMode = 'agent';
+  let nextAgentId = 0;
+  let svg;
+  let obsGroup;
+  let targetHitGroup;
+  let targetGroup;
+  let agentGroup;
+  let labelGroup;
+  let resizeMode = 'add';
+  let paintSession = null;
+  const obsElements = {};
+
+  const gridContainer = document.getElementById('grid-container');
+  const densitySlider = document.getElementById('density-slider');
+  const densityInput = document.getElementById('density-input');
+  const sizePresetButtons = [...document.querySelectorAll('#size-presets .size-chip')];
+  const resizeButtons = [...document.querySelectorAll('#resize-controls [data-resize-direction]')];
+  const resizeModeToggle = document.getElementById('resize-mode-toggle');
+
+  const statSize = document.getElementById('stat-size');
+  const statObstacles = document.getElementById('stat-obstacles');
+  const statFree = document.getElementById('stat-free');
+  const statDensity = document.getElementById('stat-density');
+
+  const agentCountEl = document.getElementById('agent-count');
+  const agentListEl = document.getElementById('agent-list');
+  const agentCountSlider = document.getElementById('agent-count-slider');
+  const agentCountInput = document.getElementById('agent-count-input');
+  const generateBtn = document.getElementById('btn-generate');
+  const addAgentBtn = document.getElementById('add-agent');
+  const removeAgentBtn = document.getElementById('remove-agent');
+  const toggleNumberingBtn = document.getElementById('toggle-numbering');
+  const toggleSelectionBtn = document.getElementById('toggle-selection');
+  let showNumbering = true;
+  let showSelection = true;
+  const copyBtn = document.getElementById('copy-pogema');
+  const downloadSvgBtn = document.getElementById('download-svg');
+  const randomizeBtn = document.getElementById('btn-randomize');
+  const clearObstaclesBtn = document.getElementById('btn-clear-obstacles');
+  const toggleBtn = document.getElementById('theme-toggle');
+
+  function key(r, c) { return r + ',' + c; }
+  function cxPos(c) { return PAD + c * CELL + CELL / 2; }
+  function cyPos(r) { return PAD + r * CELL + CELL / 2; }
+  function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+  function clampCountInput(input, min, max, fallback) {
+    let value = parseInt(input.value, 10);
+    if (Number.isNaN(value)) value = fallback;
+    value = clamp(value, min, max);
+    input.value = value;
+    return value;
+  }
+
+  function createSeededRandom(seed) {
+    let t = seed >>> 0;
+    return function() {
+      t += 0x6d2b79f5;
+      let v = Math.imul(t ^ (t >>> 15), t | 1);
+      v ^= v + Math.imul(v ^ (v >>> 7), v | 61);
+      return ((v ^ (v >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function shuffleInPlace(items, rng) {
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
+  }
+
+  function bindRangeNumberInput(range, input, getBounds, fallback) {
+    range.addEventListener('input', () => {
+      input.value = range.value;
+    });
+    input.addEventListener('change', () => {
+      const { min, max } = getBounds();
+      const value = clampCountInput(input, min, max, fallback);
+      range.value = value;
+    });
+  }
+
+  function forEachCell(rows, cols, visit) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) visit(r, c);
+    }
+  }
+
+  function getMapArray() {
+    const rows = [];
+    forEachCell(ROWS, COLS, (r, c) => {
+      if (!rows[r]) rows[r] = '';
+      rows[r] += obstacles.has(key(r, c)) ? '#' : '.';
+    });
+    return rows;
+  }
+
+  function getObstacleCoords() {
+    return [...obstacles].map((item) => item.split(',').map(Number));
+  }
+
+  function getFreeCellCount() {
+    return ROWS * COLS - obstacles.size;
+  }
+
+  function cellHasAgent(r, c, excludeId) {
+    return agents.some((agent) => agent.id !== excludeId && agent.row === r && agent.col === c);
+  }
+
+  function cellHasTarget(r, c, excludeId) {
+    return agents.some((agent) => agent.id !== excludeId && agent.targetRow === r && agent.targetCol === c);
+  }
+
+  function randomFreeCell(extraTaken) {
+    const taken = new Set(extraTaken || []);
+    agents.forEach((agent) => taken.add(key(agent.row, agent.col)));
+    const free = [];
+    forEachCell(ROWS, COLS, (r, c) => {
+      const cellKey = key(r, c);
+      if (!obstacles.has(cellKey) && !taken.has(cellKey)) free.push([r, c]);
+    });
+    if (!free.length) return null;
+    return free[Math.floor(Math.random() * free.length)];
+  }
+
+  function buildSVG() {
+    if (svg) svg.remove();
+
+    const stroke = 10;
+    const svgW = COLS * CELL + CELL;
+    const svgH = ROWS * CELL + CELL;
+    const vbX = -stroke / 2;
+    const vbY = -stroke / 2;
+    const vbW = svgW + stroke;
+    const vbH = svgH + stroke;
+
+    svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', vbW);
+    svg.setAttribute('height', vbH);
+    svg.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+    svg.style.maxWidth = '100%';
+    svg.style.maxHeight = '100%';
+    gridContainer.appendChild(svg);
+
+    const bgGroup = document.createElementNS(NS, 'g');
+    svg.appendChild(bgGroup);
+    forEachCell(ROWS, COLS, (r, c) => {
+      const rect = document.createElementNS(NS, 'rect');
+      rect.setAttribute('x', PAD + c * CELL);
+      rect.setAttribute('y', PAD + r * CELL);
+      rect.setAttribute('width', CELL);
+      rect.setAttribute('height', CELL);
+      rect.classList.add('cell-hit');
+      bindCellInteractions(rect, r, c);
+      bgGroup.appendChild(rect);
+    });
+
+    const lineGroup = document.createElementNS(NS, 'g');
+    svg.appendChild(lineGroup);
+    for (let r = 0; r <= ROWS; r++) {
+      const line = document.createElementNS(NS, 'line');
+      const y = PAD + r * CELL;
+      line.setAttribute('x1', 0);
+      line.setAttribute('y1', y);
+      line.setAttribute('x2', svgW);
+      line.setAttribute('y2', y);
+      line.classList.add('grid-line');
+      lineGroup.appendChild(line);
+    }
+    for (let c = 0; c <= COLS; c++) {
+      const line = document.createElementNS(NS, 'line');
+      const x = PAD + c * CELL;
+      line.setAttribute('x1', x);
+      line.setAttribute('y1', 0);
+      line.setAttribute('x2', x);
+      line.setAttribute('y2', svgH);
+      line.classList.add('grid-line');
+      lineGroup.appendChild(line);
+    }
+
+    obsGroup = document.createElementNS(NS, 'g');
+    targetHitGroup = document.createElementNS(NS, 'g');
+    agentGroup = document.createElementNS(NS, 'g');
+    targetGroup = document.createElementNS(NS, 'g');
+    labelGroup = document.createElementNS(NS, 'g');
+    svg.appendChild(obsGroup);
+    svg.appendChild(targetHitGroup);
+    svg.appendChild(agentGroup);
+    svg.appendChild(targetGroup);
+    svg.appendChild(labelGroup);
+
+    Object.keys(obsElements).forEach((entryKey) => delete obsElements[entryKey]);
+    obstacles.forEach((entryKey) => {
+      const [r, c] = entryKey.split(',').map(Number);
+      drawObstacle(r, c);
+    });
+
+    agents.forEach((agent) => {
+      createAgentElements(agent);
+      setAgentVisualPosition(agent);
+      setTargetVisualPosition(agent);
+    });
+  }
+
+  function bindCellInteractions(element, r, c) {
+    element.addEventListener('mousedown', (event) => onCellPointerDown(r, c, event));
+    element.addEventListener('mouseenter', () => onCellPointerEnter(r, c));
+    element.addEventListener('dragstart', (event) => event.preventDefault());
+  }
+
+  function moveAgentPart(agent, mode, row, col, dr, dc) {
+    if (dr !== undefined && dc !== undefined) {
+      let r = row, c = col;
+      let found = false;
+      while (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+        if (!obstacles.has(key(r, c)) && !(mode === 'agent' && cellHasAgent(r, c, agent.id))) {
+          row = r; col = c; found = true; break;
+        }
+        r += dr; c += dc;
+      }
+      if (!found) return false;
+    }
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return false;
+    if (obstacles.has(key(row, col))) return false;
+    if (mode === 'agent' && cellHasAgent(row, col, agent.id)) return false;
+
+    if (mode === 'agent') {
+      agent.row = row;
+      agent.col = col;
+      updateAgentPos(agent);
+    } else {
+      agent.targetRow = row;
+      agent.targetCol = col;
+      updateTargetPos(agent);
+    }
+    return true;
+  }
+
+  function drawObstacle(r, c) {
+    const itemKey = key(r, c);
+    if (obsElements[itemKey]) return;
+    const obstacleInset = 15;
+    const obstacleSize = CELL - obstacleInset * 2;
+    const rect = document.createElementNS(NS, 'rect');
+    rect.classList.add('obstacle');
+    rect.setAttribute('x', PAD + c * CELL + obstacleInset);
+    rect.setAttribute('y', PAD + r * CELL + obstacleInset);
+    rect.setAttribute('width', obstacleSize);
+    rect.setAttribute('height', obstacleSize);
+    rect.setAttribute('rx', CORNER);
+    rect.setAttribute('ry', CORNER);
+    bindCellInteractions(rect, r, c);
+    obsGroup.appendChild(rect);
+    obsElements[itemKey] = rect;
+  }
+
+  function removeObsEl(r, c) {
+    const itemKey = key(r, c);
+    if (obsElements[itemKey]) {
+      obsElements[itemKey].remove();
+      delete obsElements[itemKey];
+    }
+  }
+
+  function createAgentElements(agent, targetHitMount = targetHitGroup, targetMount = targetGroup, agentMount = agentGroup, labelMount = labelGroup) {
+    const targetSelect = document.createElementNS(NS, 'circle');
+    targetSelect.setAttribute('r', RADIUS + 10);
+    targetSelect.classList.add('target-select-ring');
+    targetSelect.style.display = 'none';
+    targetHitMount.appendChild(targetSelect);
+    agent.targetSelectEl = targetSelect;
+
+    const targetHit = document.createElementNS(NS, 'circle');
+    targetHit.setAttribute('r', RADIUS + 10);
+    targetHit.setAttribute('fill', 'transparent');
+    targetHit.setAttribute('stroke', 'transparent');
+    targetHit.setAttribute('stroke-width', '10');
+    targetHit.style.cursor = 'grab';
+    targetHit.addEventListener('click', (event) => {
+      event.stopPropagation();
+      selectAgent(agent.id, 'target');
+    });
+    targetHit.addEventListener('mousedown', (event) => {
+      event.stopPropagation();
+      startDrag(event, agent, 'target');
+    });
+    targetHitMount.appendChild(targetHit);
+    agent.targetHitEl = targetHit;
+
+    const targetCircle = document.createElementNS(NS, 'circle');
+    targetCircle.setAttribute('r', RADIUS);
+    targetCircle.setAttribute('stroke', agent.color);
+    targetCircle.classList.add('target-circle');
+    targetCircle.style.pointerEvents = 'none';
+    targetMount.appendChild(targetCircle);
+    agent.targetEl = targetCircle;
+
+    const selectCircle = document.createElementNS(NS, 'circle');
+    selectCircle.setAttribute('r', RADIUS + 8);
+    selectCircle.classList.add('selected-ring');
+    selectCircle.style.display = 'none';
+    agentMount.appendChild(selectCircle);
+    agent.selectEl = selectCircle;
+
+    const agentCircle = document.createElementNS(NS, 'circle');
+    agentCircle.setAttribute('r', RADIUS);
+    agentCircle.setAttribute('fill', agent.color);
+    agentCircle.classList.add('agent-circle');
+    agentCircle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      selectAgent(agent.id, 'agent');
+    });
+    agentCircle.addEventListener('mousedown', (event) => {
+      event.stopPropagation();
+      startDrag(event, agent, 'agent');
+    });
+    agentMount.appendChild(agentCircle);
+    agent.circleEl = agentCircle;
+
+    const label = document.createElementNS(NS, 'text');
+    label.classList.add('agent-label');
+    label.textContent = agent.id;
+    labelMount.appendChild(label);
+    agent.labelEl = label;
+  }
+
+  function removeAgentElements(agent) {
+    [agent.circleEl, agent.labelEl, agent.targetEl, agent.targetHitEl, agent.selectEl, agent.targetSelectEl]
+      .forEach((element) => { if (element) element.remove(); });
+  }
+
+  function setAgentVisualPosition(agent) {
+    const x = cxPos(agent.col);
+    const y = cyPos(agent.row);
+    agent.circleEl.setAttribute('cx', x);
+    agent.circleEl.setAttribute('cy', y);
+    agent.labelEl.setAttribute('x', x);
+    agent.labelEl.setAttribute('y', y);
+    agent.selectEl.setAttribute('cx', x);
+    agent.selectEl.setAttribute('cy', y);
+  }
+
+  function updateAgentPos(agent, syncPanel = true) {
+    setAgentVisualPosition(agent);
+    if (syncPanel) updatePanel();
+  }
+
+  function setTargetVisualPosition(agent) {
+    const x = cxPos(agent.targetCol);
+    const y = cyPos(agent.targetRow);
+    agent.targetEl.setAttribute('cx', x);
+    agent.targetEl.setAttribute('cy', y);
+    agent.targetSelectEl.setAttribute('cx', x);
+    agent.targetSelectEl.setAttribute('cy', y);
+    agent.targetHitEl.setAttribute('cx', x);
+    agent.targetHitEl.setAttribute('cy', y);
+  }
+
+  function updateTargetPos(agent, syncPanel = true) {
+    setTargetVisualPosition(agent);
+    if (syncPanel) updatePanel();
+  }
+
+  function startDrag(event, agent, mode) {
+    event.preventDefault();
+    selectAgent(agent.id, mode);
+    const element = mode === 'agent' ? agent.circleEl : agent.targetEl;
+    element.classList.add('dragging');
+
+    let lastR = mode === 'agent' ? agent.row : agent.targetRow;
+    let lastC = mode === 'agent' ? agent.col : agent.targetCol;
+
+    function svgCoords(evt) {
+      const rect = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      const svgAspect = vb.width / vb.height;
+      const boxAspect = rect.width / rect.height;
+      let scale, offsetX, offsetY;
+      if (boxAspect > svgAspect) {
+        scale = rect.height / vb.height;
+        offsetX = (rect.width - vb.width * scale) / 2;
+        offsetY = 0;
+      } else {
+        scale = rect.width / vb.width;
+        offsetX = 0;
+        offsetY = (rect.height - vb.height * scale) / 2;
+      }
+      const x = (evt.clientX - rect.left - offsetX) / scale + vb.x;
+      const y = (evt.clientY - rect.top - offsetY) / scale + vb.y;
+      const c = Math.round((x - PAD - CELL / 2) / CELL);
+      const r = Math.round((y - PAD - CELL / 2) / CELL);
+      return { r: clamp(r, 0, ROWS - 1), c: clamp(c, 0, COLS - 1) };
+    }
+
+    function onMove(evt) {
+      const { r, c } = svgCoords(evt);
+      if (r === lastR && c === lastC) return;
+      if (!moveAgentPart(agent, mode, r, c)) return;
+      lastR = r;
+      lastC = c;
+    }
+
+    function onUp() {
+      element.classList.remove('dragging');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  function selectAgent(id, mode, syncPanel = true) {
+    const previous = agents.find((agent) => agent.id === selectedAgent);
+    if (previous) {
+      previous.selectEl.style.display = 'none';
+      previous.targetSelectEl.style.display = 'none';
+      previous.labelEl.style.display = showNumbering ? '' : 'none';
+      previous.selectEl.classList.remove('active-focus');
+      previous.targetSelectEl.classList.remove('active-focus');
+    }
+
+    selectedAgent = id;
+    if (mode) selectionMode = mode;
+
+    const current = agents.find((agent) => agent.id === id);
+    if (current) {
+      current.selectEl.style.display = showSelection ? '' : 'none';
+      current.targetSelectEl.style.display = showSelection ? '' : 'none';
+      current.labelEl.style.display = 'none';
+      applyFocusRing(current);
+    }
+
+    if (syncPanel) updatePanel();
+  }
+
+  function applyFocusRing(agent) {
+    agent.selectEl.classList.toggle('active-focus', selectionMode === 'agent');
+    agent.targetSelectEl.classList.toggle('active-focus', selectionMode === 'target');
+  }
+
+  function onCellPointerDown(r, c, event) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    paintSession = { visited: new Set() };
+    applyToolAtCell(r, c, paintSession);
+  }
+
+  function onCellPointerEnter(r, c) {
+    if (!paintSession) return;
+    applyToolAtCell(r, c, paintSession);
+  }
+
+  function applyToolAtCell(r, c, session) {
+    const itemKey = key(r, c);
+    if (session.visited.has(itemKey)) return;
+    session.visited.add(itemKey);
+
+    if (obstacles.has(itemKey)) gridAPI.removeObstacle(r, c);
+    else gridAPI.addObstacle(r, c);
+  }
+
+  window.addEventListener('mouseup', () => {
+    if (!paintSession) return;
+    paintSession = null;
+  });
+
+  function updatePanel() {
+    agentListEl.innerHTML = '';
+    agentCountEl.textContent = String(agents.length);
+    if (!agents.length) {
+      removeAgentBtn.disabled = true;
+      const emptyCard = document.createElement('div');
+      emptyCard.className = 'agent-card';
+      emptyCard.innerHTML = '<div class="agent-info"><strong>No agents yet</strong><br>Use the add button or local generate.</div>';
+      emptyCard.style.cursor = 'default';
+      agentListEl.appendChild(emptyCard);
+      return;
+    }
+
+    let currentIndex = agents.findIndex((agent) => agent.id === selectedAgent);
+    if (currentIndex === -1) currentIndex = 0;
+    const agent = agents[currentIndex];
+    removeAgentBtn.disabled = false;
+
+    const card = document.createElement('div');
+    card.className = 'agent-card agent-inspector';
+    card.innerHTML = `
+      <div class="agent-inspector-head">
+        <div class="agent-inspector-info">
+          <div class="agent-dot-wrapper">
+            <div class="agent-dot" style="background:${agent.color}"></div>
+            <input type="color" class="agent-color-input" value="${agent.color}" list="agent-colors">
+          </div>
+          <div>
+            <div class="agent-inspector-title">Agent ${agent.id}</div>
+          </div>
+        </div>
+      </div>
+      <div class="agent-inspector-grid">
+        <strong>Pos</strong><span>(${agent.row}, ${agent.col})</span>
+        <strong>Target</strong><span>(${agent.targetRow}, ${agent.targetCol})</span>
+        <!-- <strong>Mode</strong>
+        <span class="mode-toggle">
+          <svg class="mode-icon" data-mode="agent" width="22" height="22" viewBox="0 0 22 22">
+            <circle cx="11" cy="11" r="8" fill="${agent.color}" stroke="none"
+              opacity="${selectionMode === 'agent' ? 1 : 0.3}" />
+          </svg>
+          <svg class="mode-icon" data-mode="target" width="22" height="22" viewBox="0 0 22 22">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="${agent.color}" stroke-width="3"
+              opacity="${selectionMode === 'target' ? 1 : 0.3}" />
+          </svg>
+        </span> -->
+      </div>
+    `;
+    agentListEl.appendChild(card);
+
+    /* card.querySelectorAll('.mode-icon').forEach(icon => {
+      icon.addEventListener('click', () => {
+        selectionMode = icon.dataset.mode;
+        const current = agents.find(a => a.id === selectedAgent);
+        if (current) applyFocusRing(current);
+        updatePanel();
+      });
+    }); */
+
+    const colorInput = card.querySelector('.agent-color-input');
+    if (colorInput) {
+      colorInput.addEventListener('input', (e) => {
+        const newColor = e.target.value;
+        agent.color = newColor;
+        agent.circleEl.setAttribute('fill', newColor);
+        agent.targetEl.setAttribute('stroke', newColor);
+        card.querySelector('.agent-dot').style.background = newColor;
+      });
+      colorInput.addEventListener('change', () => colorInput.blur());
+    }
+  }
+
+  const dirMap = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    h: 'left', j: 'down', k: 'up', l: 'right'
+    // w: 'up', a: 'left', s: 'down', d: 'right'
+  };
+  const heldKeys = new Set();
+  let moveTimer = null;
+
+  function processHeldKeys() {
+    if (selectedAgent === null || heldKeys.size === 0) {
+      clearInterval(moveTimer);
+      moveTimer = null;
+      return;
+    }
+
+    let dr = 0;
+    let dc = 0;
+    for (const held of heldKeys) {
+      const direction = DIR[dirMap[held]];
+      if (direction) {
+        dr += direction[0];
+        dc += direction[1];
+      }
+    }
+    dr = Math.sign(dr);
+    dc = Math.sign(dc);
+    if (dr === 0 && dc === 0) return;
+
+    const agent = agents.find((entry) => entry.id === selectedAgent);
+    if (!agent) return;
+
+    if (selectionMode === 'target') {
+      const nextRow = agent.targetRow + dr;
+      const nextCol = agent.targetCol + dc;
+      moveAgentPart(agent, 'target', nextRow, nextCol, dr, dc);
+    } else {
+      const nextRow = agent.row + dr;
+      const nextCol = agent.col + dc;
+      moveAgentPart(agent, 'agent', nextRow, nextCol, dr, dc);
+    }
+  }
+
+  document.addEventListener('keydown', (event) => {
+    const tag = event.target.tagName;
+    if (tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (tag === 'INPUT') {
+      const t = event.target.type;
+      if (t === 'range') { event.target.blur(); }
+      else if (t === 'color') return;
+      else if (t === 'number') {
+        if (dirMap[event.key] || event.key === 'Tab' || event.key === ' ') event.target.blur();
+        else return;
+      }
+      else return;
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      if (!agents.length) return;
+      const currentIndex = agents.findIndex((agent) => agent.id === selectedAgent);
+      let nextIndex;
+      if (event.shiftKey) {
+        nextIndex = currentIndex <= 0 ? agents.length - 1 : currentIndex - 1;
+      } else {
+        nextIndex = currentIndex === -1 || currentIndex >= agents.length - 1 ? 0 : currentIndex + 1;
+      }
+      selectAgent(agents[nextIndex].id, selectionMode);
+      return;
+    }
+
+    if (event.key === ' ') {
+      event.preventDefault();
+      if (selectedAgent === null) return;
+      selectionMode = selectionMode === 'agent' ? 'target' : 'agent';
+      const current = agents.find((agent) => agent.id === selectedAgent);
+      if (current) applyFocusRing(current);
+      updatePanel();
+      return;
+    }
+
+    if (event.key >= '0' && event.key <= '9') {
+      const id = parseInt(event.key, 10);
+      const agent = agents.find((agent) => agent.id === id);
+      if (agent) selectAgent(id, selectionMode);
+      return;
+    }
+
+    if ((event.key === '+' || event.key === '=') && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      gridAPI.addAgent();
+      return;
+    }
+
+    if (event.key === '-' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      if (!agents.length) return;
+      const currentIndex = agents.findIndex((agent) => agent.id === selectedAgent);
+      const agent = agents[currentIndex === -1 ? 0 : currentIndex];
+      if (agent) gridAPI.removeAgent(agent.id);
+      return;
+    }
+
+    if (!dirMap[event.key]) return;
+    event.preventDefault();
+    if (heldKeys.has(event.key)) return;
+    heldKeys.add(event.key);
+    if (!moveTimer) {
+      processHeldKeys();
+      moveTimer = setInterval(processHeldKeys, MOVE_INTERVAL);
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    heldKeys.delete(event.key);
+    if (heldKeys.size === 0 && moveTimer) {
+      clearInterval(moveTimer);
+      moveTimer = null;
+    }
+  });
+
+  function createAgentRecord(row, col, targetRow, targetCol) {
+    if (row == null || col == null) {
+      const position = randomFreeCell();
+      if (!position) return null;
+      row = position[0];
+      col = position[1];
+    }
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return null;
+    if (obstacles.has(key(row, col)) || cellHasAgent(row, col)) return null;
+
+    if (targetRow == null || targetCol == null) {
+      const takenTargets = new Set();
+      agents.forEach((agent) => takenTargets.add(key(agent.targetRow, agent.targetCol)));
+      const availableTargets = [];
+      const fallbackTargets = [];
+      forEachCell(ROWS, COLS, (r, c) => {
+        const cellKey = key(r, c);
+        if (obstacles.has(cellKey) || takenTargets.has(cellKey)) return;
+        fallbackTargets.push([r, c]);
+        if (r !== row || c !== col) availableTargets.push([r, c]);
+      });
+      const choices = availableTargets.length ? availableTargets : fallbackTargets;
+      const target = choices[Math.floor(Math.random() * choices.length)];
+      if (!target) return null;
+      targetRow = target[0];
+      targetCol = target[1];
+    }
+
+    if (targetRow < 0 || targetRow >= ROWS || targetCol < 0 || targetCol >= COLS) return null;
+    if (obstacles.has(key(targetRow, targetCol))) return null;
+
+    const id = nextAgentId++;
+    const color = COLORS[id % COLORS.length];
+    return { id, row, col, targetRow, targetCol, color };
+  }
+
+  function insertAgent(agent, { targetHitMount = targetHitGroup, targetMount = targetGroup, agentMount = agentGroup, labelMount = labelGroup, select = true, syncPanel = true } = {}) {
+    agents.push(agent);
+    createAgentElements(agent, targetHitMount, targetMount, agentMount, labelMount);
+    if (!showNumbering) agent.labelEl.style.display = 'none';
+    setAgentVisualPosition(agent);
+    setTargetVisualPosition(agent);
+
+    if (select) selectAgent(agent.id, 'agent', syncPanel);
+    else if (syncPanel) updatePanel();
+    return agent.id;
+  }
+
+  const gridAPI = {
+    moveAgent(agentId, direction) {
+      const agent = agents.find((entry) => entry.id === agentId);
+      if (!agent) return false;
+      const delta = DIR[direction];
+      if (!delta) return false;
+      return moveAgentPart(agent, 'agent', agent.row + delta[0], agent.col + delta[1]);
+    },
+    moveAgentTo(agentId, row, col) {
+      const agent = agents.find((entry) => entry.id === agentId);
+      if (!agent) return false;
+      return moveAgentPart(agent, 'agent', row, col);
+    },
+    addObstacle(row, col) {
+      if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return false;
+      const itemKey = key(row, col);
+      if (obstacles.has(itemKey)) return false;
+      if (cellHasAgent(row, col) || cellHasTarget(row, col)) return false;
+      obstacles.add(itemKey);
+      drawObstacle(row, col);
+      updateMapStats();
+      updateGenerateControls();
+      return true;
+    },
+    removeObstacle(row, col) {
+      const itemKey = key(row, col);
+      if (!obstacles.has(itemKey)) return false;
+      obstacles.delete(itemKey);
+      removeObsEl(row, col);
+      updateMapStats();
+      updateGenerateControls();
+      return true;
+    },
+    clearObstacles() {
+      [...obstacles].forEach((itemKey) => {
+        const [r, c] = itemKey.split(',').map(Number);
+        obstacles.delete(itemKey);
+        removeObsEl(r, c);
+      });
+      updateMapStats();
+      updateGenerateControls();
+      return true;
+    },
+    addAgent(row, col, targetRow, targetCol) {
+      const agent = createAgentRecord(row, col, targetRow, targetCol);
+      if (!agent) return null;
+      return insertAgent(agent);
+    },
+    removeAgent(agentId) {
+      const index = agents.findIndex((agent) => agent.id === agentId);
+      if (index === -1) return false;
+      const agent = agents[index];
+      const wasSelected = selectedAgent === agentId;
+      const nextSelectedAgent = agents[index + 1] || agents[index - 1] || null;
+      removeAgentElements(agent);
+      agents.splice(index, 1);
+      if (wasSelected) {
+        selectedAgent = null;
+        if (nextSelectedAgent && agents.includes(nextSelectedAgent)) {
+          selectAgent(nextSelectedAgent.id, selectionMode, false);
+        }
+      }
+      if (agents.length === 0) nextAgentId = 0;
+      updatePanel();
+      return true;
+    },
+    getState() {
+      return {
+        rows: ROWS,
+        cols: COLS,
+        obstacles: getObstacleCoords(),
+        agents: agents.map((agent) => ({
+          id: agent.id,
+          row: agent.row,
+          col: agent.col,
+          targetRow: agent.targetRow,
+          targetCol: agent.targetCol,
+          color: agent.color
+        }))
+      };
+    },
+    loadConfig(config) {
+      agents.forEach((agent) => removeAgentElements(agent));
+      agents.length = 0;
+      obstacles.clear();
+      Object.keys(obsElements).forEach((itemKey) => delete obsElements[itemKey]);
+      selectedAgent = null;
+      nextAgentId = 0;
+
+      ROWS = config.rows;
+      COLS = config.cols;
+
+      if (config.obstacles) {
+        config.obstacles.forEach(([r, c]) => obstacles.add(key(r, c)));
+      }
+
+      buildSVG();
+
+      if (config.agents) {
+        const targetHitFragment = document.createDocumentFragment();
+        const targetFragment = document.createDocumentFragment();
+        const agentFragment = document.createDocumentFragment();
+        const labelFragment = document.createDocumentFragment();
+        config.agents.forEach((agent) => {
+          const nextAgent = createAgentRecord(agent.row, agent.col, agent.targetRow, agent.targetCol);
+          if (!nextAgent) return;
+          insertAgent(nextAgent, {
+            targetHitMount: targetHitFragment,
+            targetMount: targetFragment,
+            agentMount: agentFragment,
+            labelMount: labelFragment,
+            select: false,
+            syncPanel: false
+          });
+        });
+        targetHitGroup.appendChild(targetHitFragment);
+        targetGroup.appendChild(targetFragment);
+        agentGroup.appendChild(agentFragment);
+        labelGroup.appendChild(labelFragment);
+      }
+      if (agents.length) selectAgent(agents[0].id, 'agent');
+      else updatePanel();
+      updateMapStats();
+      updateGenerateControls();
+      updateResizeControls();
+    }
+  };
+
+  function copyText(text) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  function generatePogemaSnippet() {
+    const mapText = getMapArray().map((row) => '    ' + row).join('\n');
+    const agentsXY = agents.map((agent) => `[${agent.row}, ${agent.col}]`).join(', ');
+    const targetsXY = agents.map((agent) => `[${agent.targetRow}, ${agent.targetCol}]`).join(', ');
+    return `grid_config = GridConfig(\n    map="""\n${mapText}\n    """,\n    agents_xy=[${agentsXY}],\n    targets_xy=[${targetsXY}],\n)`;
+  }
+
+  function downloadCurrentSvg() {
+    if (!svg) return;
+    const exportedSvg = svg.cloneNode(true);
+    exportedSvg.removeAttribute('style');
+    exportedSvg.removeAttribute('width');
+    exportedSvg.removeAttribute('height');
+    exportedSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    const lineColor = '#84a1ae';
+    const obstacleColor = '#84a1ae';
+    exportedSvg.querySelectorAll('.cell-hit, .target-hit, .selected-ring, .target-select-ring, circle[fill="transparent"][stroke="transparent"]').forEach((element) => element.remove());
+    exportedSvg.querySelectorAll('g').forEach(g => {
+      if (!g.children.length) g.remove();
+    });
+    exportedSvg.querySelectorAll('.grid-line').forEach((line) => {
+      line.setAttribute('stroke', lineColor);
+      line.setAttribute('stroke-width', '10');
+    });
+    exportedSvg.querySelectorAll('.obstacle').forEach((rect) => {
+      rect.setAttribute('fill', obstacleColor);
+    });
+    exportedSvg.querySelectorAll('.target-circle').forEach((circle) => {
+      circle.setAttribute('fill', 'none');
+      circle.setAttribute('stroke-width', '10');
+    });
+    exportedSvg.querySelectorAll('.agent-label').forEach((label) => {
+      label.setAttribute('fill', '#fff');
+      label.setAttribute('font-size', '28');
+      label.setAttribute('font-weight', 'bold');
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('dominant-baseline', 'central');
+      label.style.removeProperty('display');
+    });
+    const serialized = new XMLSerializer().serializeToString(exportedSvg);
+    const svgText = serialized.startsWith('<?xml')
+      ? serialized
+      : `<?xml version="1.0" encoding="UTF-8"?>\n${serialized}`;
+    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pogema-map-${ROWS}x${COLS}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function updateMapStats() {
+    const freeCells = getFreeCellCount();
+    statSize.textContent = `${ROWS}×${COLS}`;
+    statObstacles.textContent = String(obstacles.size);
+    statFree.textContent = String(freeCells);
+    statDensity.textContent = `${((obstacles.size / (ROWS * COLS)) * 100).toFixed(1)}%`;
+  }
+
+
+  function updateGenerateControls() {
+    const maxAgents = getFreeCellCount();
+    const normalizedMax = Math.max(1, maxAgents);
+    agentCountSlider.min = 1;
+    agentCountSlider.max = normalizedMax;
+    agentCountInput.min = 1;
+    agentCountInput.max = normalizedMax;
+
+    const nextValue = clampCountInput(agentCountInput, 1, normalizedMax, Math.min(8, normalizedMax));
+    agentCountSlider.value = nextValue;
+    generateBtn.disabled = maxAgents < 1;
+    if (maxAgents < 1) {
+      generateBtn.textContent = 'Need More Free Cells';
+    } else {
+      generateBtn.textContent = 'Generate Agents & Targets';
+    }
+  }
+
+  function loadRandomMap(rows, cols, density, seed) {
+    const rng = createSeededRandom(seed);
+    const obstacleCoords = [];
+    forEachCell(rows, cols, (r, c) => {
+      if (rng() < density / 100) obstacleCoords.push([r, c]);
+    });
+    gridAPI.loadConfig({
+      rows,
+      cols,
+      obstacles: obstacleCoords,
+      agents: []
+    });
+  }
+
+
+  function getResizedObstacles(nextRows, nextCols, rowOffset, colOffset) {
+    return getObstacleCoords()
+      .map(([r, c]) => [r + rowOffset, c + colOffset])
+      .filter(([r, c]) => r >= 0 && r < nextRows && c >= 0 && c < nextCols);
+  }
+
+  function resizeMap(nextRows, nextCols, rowOffset, colOffset) {
+    const nextObstacles = getResizedObstacles(nextRows, nextCols, rowOffset, colOffset);
+    gridAPI.loadConfig({
+      rows: nextRows,
+      cols: nextCols,
+      obstacles: nextObstacles,
+      agents: []
+    });
+  }
+
+  function resizeMapCentered(nextRows, nextCols) {
+    const rowOffset = Math.floor((nextRows - ROWS) / 2);
+    const colOffset = Math.floor((nextCols - COLS) / 2);
+    resizeMap(nextRows, nextCols, rowOffset, colOffset);
+  }
+
+  function getResizeState(action) {
+    const config = RESIZE_ACTIONS[action];
+    if (!config) return null;
+    return {
+      nextRows: ROWS + config.rowsDelta,
+      nextCols: COLS + config.colsDelta,
+      rowOffset: config.rowOffset,
+      colOffset: config.colOffset
+    };
+  }
+
+  function canResize(action) {
+    const s = getResizeState(action);
+    return !!s &&
+      s.nextRows >= MIN_DIMENSION && s.nextRows <= MAX_DIMENSION &&
+      s.nextCols >= MIN_DIMENSION && s.nextCols <= MAX_DIMENSION;
+  }
+
+  function applyResizeAction(action) {
+    if (!canResize(action)) return;
+    const s = getResizeState(action);
+    resizeMap(s.nextRows, s.nextCols, s.rowOffset, s.colOffset);
+  }
+
+  function updateResizeControls() {
+    resizeButtons.forEach((button) => {
+      const direction = button.dataset.resizeDirection;
+      const action = `${resizeMode}-${direction}`;
+      button.disabled = !canResize(action);
+      button.textContent = RESIZE_GLYPHS[resizeMode][direction];
+      button.title = (resizeMode === 'add' ? 'Grow ' : 'Shrink ') + direction.replace('-', ' ');
+    });
+    resizeModeToggle.textContent = resizeMode === 'add' ? '+' : '\u2212';
+    resizeModeToggle.dataset.mode = resizeMode;
+    resizeModeToggle.title = resizeMode === 'add' ? 'Switch to shrink mode' : 'Switch to grow mode';
+  }
+
+  function generateLocalAgents() {
+    const requested = clampCountInput(agentCountInput, 1, parseInt(agentCountInput.max, 10), 1);
+    agentCountSlider.value = requested;
+
+    const freeCells = [];
+    forEachCell(ROWS, COLS, (r, c) => {
+      if (!obstacles.has(key(r, c))) freeCells.push([r, c]);
+    });
+
+    const maxAgents = freeCells.length;
+    if (requested > maxAgents) return;
+
+    const rng = createSeededRandom(Math.floor(Math.random() * 0x100000000));
+    shuffleInPlace(freeCells, rng);
+
+    const targetCells = freeCells.slice();
+    shuffleInPlace(targetCells, rng);
+
+    const generatedAgents = [];
+    for (let i = 0; i < requested; i++) {
+      const position = freeCells[i];
+      const target = targetCells[i];
+      generatedAgents.push({
+        row: position[0],
+        col: position[1],
+        targetRow: target[0],
+        targetCol: target[1]
+      });
+    }
+
+    gridAPI.loadConfig({
+      rows: ROWS,
+      cols: COLS,
+      obstacles: getObstacleCoords(),
+      agents: generatedAgents
+    });
+  }
+  randomizeBtn.addEventListener('click', () => {
+    const density = clampCountInput(densityInput, 0, 70, 18);
+    densitySlider.value = density;
+    const seed = Math.floor(Math.random() * 0x100000000);
+    loadRandomMap(ROWS, COLS, density, seed);
+  });
+
+  clearObstaclesBtn.addEventListener('click', () => {
+    gridAPI.clearObstacles();
+  });
+
+  resizeButtons.forEach((button) => {
+    button.addEventListener('click', () => applyResizeAction(`${resizeMode}-${button.dataset.resizeDirection}`));
+  });
+
+  resizeModeToggle.addEventListener('click', () => {
+    resizeMode = resizeMode === 'add' ? 'remove' : 'add';
+    updateResizeControls();
+  });
+
+  sizePresetButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      resizeMapCentered(parseInt(button.dataset.rows, 10), parseInt(button.dataset.cols, 10));
+    });
+  });
+
+  bindRangeNumberInput(densitySlider, densityInput, () => ({ min: 0, max: 70 }), 18);
+  bindRangeNumberInput(agentCountSlider, agentCountInput, () => ({ min: 1, max: parseInt(agentCountInput.max, 10) }), 1);
+
+  generateBtn.addEventListener('click', generateLocalAgents);
+  addAgentBtn.addEventListener('click', () => gridAPI.addAgent());
+  removeAgentBtn.addEventListener('click', () => {
+    if (!agents.length) return;
+    const currentIndex = agents.findIndex((agent) => agent.id === selectedAgent);
+    const agent = agents[currentIndex === -1 ? 0 : currentIndex];
+    if (agent) gridAPI.removeAgent(agent.id);
+  });
+
+  toggleNumberingBtn.addEventListener('click', () => {
+    showNumbering = !showNumbering;
+    toggleNumberingBtn.style.opacity = showNumbering ? '' : '0.5';
+    agents.forEach((agent) => {
+      agent.labelEl.style.display = (!showNumbering || agent.id === selectedAgent) ? 'none' : '';
+    });
+  });
+
+  toggleSelectionBtn.addEventListener('click', () => {
+    showSelection = !showSelection;
+    toggleSelectionBtn.style.opacity = showSelection ? '' : '0.5';
+    agents.forEach((agent) => {
+      if (agent.id === selectedAgent) {
+        agent.selectEl.style.display = showSelection ? '' : 'none';
+        agent.targetSelectEl.style.display = showSelection ? '' : 'none';
+      }
+    });
+  });
+
+  copyBtn.addEventListener('click', () => {
+    copyText(generatePogemaSnippet()).then(() => {
+      copyBtn.innerHTML = '&#10003; Copied';
+      setTimeout(() => { copyBtn.innerHTML = '&#128203; Copy Pogema Snippet'; }, 1400);
+    });
+  });
+
+  downloadSvgBtn.addEventListener('click', () => {
+    downloadCurrentSvg();
+    downloadSvgBtn.innerHTML = '&#10003; Downloaded';
+    setTimeout(() => { downloadSvgBtn.innerHTML = '&#10515; Download SVG'; }, 1400);
+  });
+
+  // Theme: sessionStorage overrides URL param
+  let saved = sessionStorage.getItem('pogema-editor-theme');
+  let nightMode = saved ? saved === 'night' : new URLSearchParams(window.location.search).get('theme') === 'slate';
+  function applyTheme() {
+    document.body.className = nightMode ? 'night' : 'day';
+    document.documentElement.classList.toggle('night', nightMode);
+    toggleBtn.innerHTML = nightMode ? '&#9788;' : '&#9790;';
+    toggleBtn.title = nightMode ? 'Switch to day mode' : 'Switch to night mode';
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    nightMode = !nightMode;
+    sessionStorage.setItem('pogema-editor-theme', nightMode ? 'night' : 'day');
+    applyTheme();
+  });
+
+  window.grid = gridAPI;
+
+  applyTheme();
+  loadRandomMap(8, 8, 18, Math.floor(Math.random() * 0x100000000));
+  generateLocalAgents();
+})();
+</script>
+</body>
+</html>

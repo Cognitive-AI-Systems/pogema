@@ -32,6 +32,7 @@ urls = { "Homepage" = "https://github.com/Cognitive-AI-Systems/pogema" }
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov", "tabulate", "pytest-codeblocks[test]>=0.17.0"]
 dev = ["pogema[test]", "ruff"]
+docs = ["mkdocs-material", "markdown-exec[ansi]"]
 
 [tool.hatch.version]
 path = "pogema/__init__.py"
