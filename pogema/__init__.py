@@ -22,7 +22,7 @@ from pogema.wrappers.metrics import (
 from pogema.wrappers.multi_time_limit import MultiTimeLimit
 from pogema.wrappers.persistence import PersistentWrapper
 
-__version__ = '1.4.0'
+__version__ = '2.0.0a'
 
 __all__ = [
     'GridConfig',
