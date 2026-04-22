@@ -470,15 +470,15 @@
       <h2>Map Size</h2>
     </div>
     <div class="resize-pad" id="resize-controls">
-      <button class="tool-btn" data-resize-direction="top-left" title="Resize top-left corner">↖</button>
-      <button class="tool-btn" data-resize-direction="top" title="Resize top edge">↑</button>
-      <button class="tool-btn" data-resize-direction="top-right" title="Resize top-right corner">↗</button>
-      <button class="tool-btn" data-resize-direction="left" title="Resize left edge">←</button>
-      <button id="resize-mode-toggle" class="tool-btn resize-mode-toggle" title="Toggle grow or shrink mode">+</button>
-      <button class="tool-btn" data-resize-direction="right" title="Resize right edge">→</button>
-      <button class="tool-btn" data-resize-direction="bottom-left" title="Resize bottom-left corner">↙</button>
-      <button class="tool-btn" data-resize-direction="bottom" title="Resize bottom edge">↓</button>
-      <button class="tool-btn" data-resize-direction="bottom-right" title="Resize bottom-right corner">↘</button>
+      <button class="tool-btn" data-resize-direction="top-left" title="Resize top-left corner"></button>
+      <button class="tool-btn" data-resize-direction="top" title="Resize top edge"></button>
+      <button class="tool-btn" data-resize-direction="top-right" title="Resize top-right corner"></button>
+      <button class="tool-btn" data-resize-direction="left" title="Resize left edge"></button>
+      <button id="resize-mode-toggle" class="tool-btn resize-mode-toggle" title="Toggle grow or shrink mode"></button>
+      <button class="tool-btn" data-resize-direction="right" title="Resize right edge"></button>
+      <button class="tool-btn" data-resize-direction="bottom-left" title="Resize bottom-left corner"></button>
+      <button class="tool-btn" data-resize-direction="bottom" title="Resize bottom edge"></button>
+      <button class="tool-btn" data-resize-direction="bottom-right" title="Resize bottom-right corner"></button>
     </div>
   </div>
 
@@ -501,6 +501,7 @@
     <div class="action-row">
       <button id="btn-clear-obstacles" class="tool-btn">Clear</button>
       <button id="btn-randomize" class="tool-btn">Randomize</button>
+      <button id="btn-toggle-border" class="tool-btn" style="font-weight:bold">Border: On</button>
     </div>
     <div class="gen-row">
       <label>Density</label>
@@ -598,26 +599,29 @@
   const CORNER = 15;
   const COLORS = ['#c1433c', '#2e6f9e', '#6e81af', '#00b9c8', '#72d5c8', '#0ea08c', '#8f7b66'];
   const DIR = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] };
+  function arrowSvg(rotation) {
+    return `<svg width="16" height="16" viewBox="0 0 16 16" style="display:block;margin:auto"><path d="M8 2v10M8 2l-4 4M8 2l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="rotate(${rotation} 8 8)"/></svg>`;
+  }
   const RESIZE_GLYPHS = {
     add: {
-      'top-left': '↖',
-      top: '↑',
-      'top-right': '↗',
-      left: '←',
-      right: '→',
-      'bottom-left': '↙',
-      bottom: '↓',
-      'bottom-right': '↘'
+      'top-left': arrowSvg(315),
+      top: arrowSvg(0),
+      'top-right': arrowSvg(45),
+      left: arrowSvg(270),
+      right: arrowSvg(90),
+      'bottom-left': arrowSvg(225),
+      bottom: arrowSvg(180),
+      'bottom-right': arrowSvg(135)
     },
     remove: {
-      'top-left': '↘',
-      top: '↓',
-      'top-right': '↙',
-      left: '→',
-      right: '←',
-      'bottom-left': '↗',
-      bottom: '↑',
-      'bottom-right': '↖'
+      'top-left': arrowSvg(135),
+      top: arrowSvg(180),
+      'top-right': arrowSvg(225),
+      left: arrowSvg(90),
+      right: arrowSvg(270),
+      'bottom-left': arrowSvg(45),
+      bottom: arrowSvg(0),
+      'bottom-right': arrowSvg(315)
     }
   };
   const RESIZE_ACTIONS = {
@@ -684,10 +688,12 @@
   const toggleSelectionBtn = document.getElementById('toggle-selection');
   let showNumbering = true;
   let showSelection = true;
+  let borderEnabled = true;
   const copyBtn = document.getElementById('copy-pogema');
   const downloadSvgBtn = document.getElementById('download-svg');
   const randomizeBtn = document.getElementById('btn-randomize');
   const clearObstaclesBtn = document.getElementById('btn-clear-obstacles');
+  const borderToggleBtn = document.getElementById('btn-toggle-border');
   const toggleBtn = document.getElementById('theme-toggle');
 
   function key(r, c) { return r + ',' + c; }
@@ -749,6 +755,35 @@
 
   function getObstacleCoords() {
     return [...obstacles].map((item) => item.split(',').map(Number));
+  }
+
+  function isBorderCell(r, c) {
+    return r === 0 || c === 0 || r === ROWS - 1 || c === COLS - 1;
+  }
+
+  function applyBorder() {
+    forEachCell(ROWS, COLS, (r, c) => {
+      if (!isBorderCell(r, c)) return;
+      const itemKey = key(r, c);
+      if (obstacles.has(itemKey)) return;
+      if (cellHasAgent(r, c) || cellHasTarget(r, c)) return;
+      obstacles.add(itemKey);
+      drawObstacle(r, c);
+    });
+    updateMapStats();
+    updateGenerateControls();
+  }
+
+  function removeBorder() {
+    forEachCell(ROWS, COLS, (r, c) => {
+      if (!isBorderCell(r, c)) return;
+      const itemKey = key(r, c);
+      if (!obstacles.has(itemKey)) return;
+      obstacles.delete(itemKey);
+      removeObsEl(r, c);
+    });
+    updateMapStats();
+    updateGenerateControls();
   }
 
   function getFreeCellCount() {
@@ -1108,6 +1143,7 @@
     if (session.visited.has(itemKey)) return;
     session.visited.add(itemKey);
 
+    if (borderEnabled && isBorderCell(r, c)) return;
     if (obstacles.has(itemKey)) gridAPI.removeObstacle(r, c);
     else gridAPI.addObstacle(r, c);
   }
@@ -1461,6 +1497,7 @@
         config.agents.forEach((agent) => {
           const nextAgent = createAgentRecord(agent.row, agent.col, agent.targetRow, agent.targetCol);
           if (!nextAgent) return;
+          if (agent.color) nextAgent.color = agent.color;
           insertAgent(nextAgent, {
             targetHitMount: targetHitFragment,
             targetMount: targetFragment,
@@ -1477,6 +1514,7 @@
       }
       if (agents.length) selectAgent(agents[0].id, 'agent');
       else updatePanel();
+      if (borderEnabled) applyBorder();
       updateMapStats();
       updateGenerateControls();
       updateResizeControls();
@@ -1519,6 +1557,7 @@
       circle.setAttribute('stroke-width', '10');
     });
     exportedSvg.querySelectorAll('.agent-label').forEach((label) => {
+      if (!showNumbering) { label.remove(); return; }
       label.setAttribute('fill', '#fff');
       label.setAttribute('font-size', '28');
       label.setAttribute('font-weight', 'bold');
@@ -1589,13 +1628,34 @@
       .filter(([r, c]) => r >= 0 && r < nextRows && c >= 0 && c < nextCols);
   }
 
+  function getResizedAgents(nextRows, nextCols, rowOffset, colOffset, nextObstacles) {
+    const obsSet = new Set(nextObstacles.map(([r, c]) => key(r, c)));
+    const occupied = new Set();
+    return agents.map((agent) => ({
+      row: agent.row + rowOffset,
+      col: agent.col + colOffset,
+      targetRow: agent.targetRow + rowOffset,
+      targetCol: agent.targetCol + colOffset,
+      color: agent.color
+    })).filter((a) => {
+      if (a.row < 0 || a.row >= nextRows || a.col < 0 || a.col >= nextCols) return false;
+      if (a.targetRow < 0 || a.targetRow >= nextRows || a.targetCol < 0 || a.targetCol >= nextCols) return false;
+      if (obsSet.has(key(a.row, a.col)) || obsSet.has(key(a.targetRow, a.targetCol))) return false;
+      const posKey = key(a.row, a.col);
+      if (occupied.has(posKey)) return false;
+      occupied.add(posKey);
+      return true;
+    });
+  }
+
   function resizeMap(nextRows, nextCols, rowOffset, colOffset) {
     const nextObstacles = getResizedObstacles(nextRows, nextCols, rowOffset, colOffset);
+    const nextAgents = getResizedAgents(nextRows, nextCols, rowOffset, colOffset, nextObstacles);
     gridAPI.loadConfig({
       rows: nextRows,
       cols: nextCols,
       obstacles: nextObstacles,
-      agents: []
+      agents: nextAgents
     });
   }
 
@@ -1634,10 +1694,12 @@
       const direction = button.dataset.resizeDirection;
       const action = `${resizeMode}-${direction}`;
       button.disabled = !canResize(action);
-      button.textContent = RESIZE_GLYPHS[resizeMode][direction];
+      button.innerHTML = RESIZE_GLYPHS[resizeMode][direction];
       button.title = (resizeMode === 'add' ? 'Grow ' : 'Shrink ') + direction.replace('-', ' ');
     });
-    resizeModeToggle.textContent = resizeMode === 'add' ? '+' : '\u2212';
+    resizeModeToggle.innerHTML = resizeMode === 'add'
+      ? '<svg width="16" height="16" viewBox="0 0 16 16" style="display:block;margin:auto"><path d="M8 2v12M2 8h12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'
+      : '<svg width="16" height="16" viewBox="0 0 16 16" style="display:block;margin:auto"><path d="M2 8h12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>';
     resizeModeToggle.dataset.mode = resizeMode;
     resizeModeToggle.title = resizeMode === 'add' ? 'Switch to shrink mode' : 'Switch to grow mode';
   }
@@ -1688,6 +1750,33 @@
 
   clearObstaclesBtn.addEventListener('click', () => {
     gridAPI.clearObstacles();
+    if (borderEnabled) applyBorder();
+  });
+
+  borderToggleBtn.addEventListener('click', () => {
+    borderEnabled = !borderEnabled;
+    borderToggleBtn.textContent = borderEnabled ? 'Border: On' : 'Border: Off';
+    borderToggleBtn.style.opacity = borderEnabled ? '' : '0.5';
+    if (borderEnabled) {
+      // Grow grid by 1 cell on each side, then fill border with obstacles
+      const nextRows = ROWS + 2;
+      const nextCols = COLS + 2;
+      if (nextRows <= MAX_DIMENSION && nextCols <= MAX_DIMENSION) {
+        resizeMap(nextRows, nextCols, 1, 1);
+        applyBorder();
+      } else {
+        applyBorder();
+      }
+    } else {
+      // Shrink grid by removing border ring
+      const nextRows = ROWS - 2;
+      const nextCols = COLS - 2;
+      if (nextRows >= MIN_DIMENSION && nextCols >= MIN_DIMENSION) {
+        resizeMap(nextRows, nextCols, -1, -1);
+      } else {
+        removeBorder();
+      }
+    }
   });
 
   resizeButtons.forEach((button) => {
