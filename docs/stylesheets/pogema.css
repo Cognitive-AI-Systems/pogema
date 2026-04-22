@@ -1,0 +1,20 @@
+/* POGEMA brand colors from svg_animation/animation_drawer.py */
+:root {
+  /* Primary: pogema red #c1433c */
+  --md-primary-fg-color: #c1433c;
+  --md-primary-fg-color--light: #d4635d;
+  --md-primary-fg-color--dark: #a03530;
+
+  /* Accent: pogema teal #0ea08c */
+  --md-accent-fg-color: #0ea08c;
+  --md-accent-fg-color--transparent: #0ea08c1a;
+}
+
+/* Dark mode adjustments */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #c1433c;
+  --md-primary-fg-color--light: #d4635d;
+  --md-primary-fg-color--dark: #a03530;
+  --md-accent-fg-color: #72D5C8;
+  --md-accent-fg-color--transparent: #72D5C81a;
+}
