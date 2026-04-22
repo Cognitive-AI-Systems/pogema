@@ -6,6 +6,8 @@
 **Partially-Observable Grid Environment for Multiple Agents**
 
 
+[![Docs](https://img.shields.io/badge/Docs-Pages-0ea08c?logo=github&logoColor=white)](https://cognitive-ai-systems.github.io/pogema/)
+[![Editor](https://img.shields.io/badge/Editor-Online-c1433c?logo=github&logoColor=white)](https://cognitive-ai-systems.github.io/pogema/editor.html)
 [![Downloads](https://static.pepy.tech/badge/pogema)](https://pepy.tech/project/pogema)
 [![Paper](https://img.shields.io/badge/Paper-ICLR%202025-1f4b99?logo=openreview&logoColor=white)](https://openreview.net/forum?id=6VgwE2tCRm)
 [![CI](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Cognitive-AI-Systems/pogema/actions/workflows/CI.yml)
