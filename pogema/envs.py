@@ -280,6 +280,12 @@ class Pogema(PogemaBase):
             for agent_idx in range(self.grid_config.num_agents):
                 if self.grid.is_active[agent_idx]:
                     self.grid.move_without_checks(agent_idx, actions[agent_idx])
+            # A later move can clear a cell already occupied by a following agent.
+            # Rebuild occupancy after all soft moves, excluding inactive agents.
+            self.grid.positions.fill(self.grid.config.FREE)
+            for agent_idx in range(self.grid_config.num_agents):
+                if self.grid.is_active[agent_idx]:
+                    self.grid.positions[self.grid.positions_xy[agent_idx]] = self.grid.config.OBSTACLE
         else:
             raise ValueError(f'Unknown collision system: {self.grid.config.collision_system}')
 
