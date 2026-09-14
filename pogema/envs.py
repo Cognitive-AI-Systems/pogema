@@ -282,7 +282,7 @@ class Pogema(PogemaBase):
                     self.grid.move_without_checks(agent_idx, actions[agent_idx])
             # A later move can clear a cell already occupied by a following agent.
             # Rebuild occupancy after all soft moves, excluding inactive agents.
-            self.grid.positions.fill(self.grid.config.FREE)
+            # self.grid.positions.fill(self.grid.config.FREE)  # Unnecessary: moves clear old cells; the final pass restores occupancy
             for agent_idx in range(self.grid_config.num_agents):
                 if self.grid.is_active[agent_idx]:
                     self.grid.positions[self.grid.positions_xy[agent_idx]] = self.grid.config.OBSTACLE
